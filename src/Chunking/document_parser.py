@@ -1,40 +1,40 @@
 """
-Document parser for financial documents using Docling.
-Handles PDF files with text and images.
+Simple document parser for PDF files.
 """
 
 import os
 from typing import List, Dict, Any
 from pathlib import Path
-import logging
-from docling.document_converter import DocumentConverter
-from docling.datamodel.base_models import ConversionResult
-from docling.datamodel.pipeline_options import PdfPipelineOptions
-from docling.backend.pypdfium2_backend import PyPdfiumDocumentBackend
+
+try:
+    import fitz  # PyMuPDF
+    HAS_PYMUPDF = True
+except ImportError:
+    HAS_PYMUPDF = False
+
+try:
+    from docling.document_converter import DocumentConverter
+    HAS_DOCLING = True
+except ImportError:
+    HAS_DOCLING = False
 
 
 class DocumentParser:
-    """Parser for financial documents using Docling."""
+    """Simple PDF parser."""
     
     def __init__(self):
         """Initialize the document parser."""
-        self.logger = logging.getLogger(__name__)
-        
-        # Configure pipeline options for better PDF processing
-        pipeline_options = PdfPipelineOptions()
-        pipeline_options.images_scale = 2.0
-        pipeline_options.generate_page_images = True
-        pipeline_options.generate_table_images = True
-        
-        # Initialize converter with optimized settings
-        self.converter = DocumentConverter(
-            pdf_backend=PyPdfiumDocumentBackend,
-            pipeline_options=pipeline_options
-        )
+        if HAS_PYMUPDF:
+            self.use_pymupdf = True
+        elif HAS_DOCLING:
+            self.use_pymupdf = False
+            self.converter = DocumentConverter()
+        else:
+            raise ImportError("Either PyMuPDF or Docling is required for PDF parsing")
     
     def parse_document(self, file_path: str) -> Dict[str, Any]:
         """
-        Parse a single document and extract text content.
+        Parse a single PDF document.
         
         Args:
             file_path: Path to the PDF file
@@ -43,36 +43,60 @@ class DocumentParser:
             Dictionary containing parsed content and metadata
         """
         try:
-            self.logger.info(f"Parsing document: {file_path}")
-            
-            # Convert document
-            result: ConversionResult = self.converter.convert(file_path)
-            
-            # Extract text content
-            text_content = result.document.export_to_markdown()
-            
-            # Get document metadata
-            metadata = {
-                "source": file_path,
-                "filename": Path(file_path).name,
-                "pages": len(result.document.pages) if hasattr(result.document, 'pages') else 1,
-                "title": self._extract_title(text_content),
-                "document_type": "financial_document"
-            }
-            
-            return {
-                "content": text_content,
-                "metadata": metadata,
-                "success": True
-            }
-            
+            if self.use_pymupdf:
+                return self._parse_with_pymupdf(file_path)
+            else:
+                return self._parse_with_docling(file_path)
         except Exception as e:
-            self.logger.error(f"Error parsing document {file_path}: {str(e)}")
             return {
                 "content": "",
                 "metadata": {"source": file_path, "error": str(e)},
                 "success": False
             }
+    
+    def _parse_with_pymupdf(self, file_path: str) -> Dict[str, Any]:
+        """Parse using PyMuPDF."""
+        doc = fitz.open(file_path)
+        text_content = ""
+        
+        for page_num in range(len(doc)):
+            page = doc.load_page(page_num)
+            text_content += page.get_text() + "\n"
+        
+        doc.close()
+        
+        metadata = {
+            "source": file_path,
+            "filename": Path(file_path).name,
+            "pages": len(doc),
+            "title": self._extract_title(text_content),
+            "document_type": "financial_document"
+        }
+        
+        return {
+            "content": text_content,
+            "metadata": metadata,
+            "success": True
+        }
+    
+    def _parse_with_docling(self, file_path: str) -> Dict[str, Any]:
+        """Parse using Docling."""
+        result = self.converter.convert(file_path)
+        text_content = result.document.export_to_markdown()
+        
+        metadata = {
+            "source": file_path,
+            "filename": Path(file_path).name,
+            "pages": len(result.document.pages) if hasattr(result.document, 'pages') else 1,
+            "title": self._extract_title(text_content),
+            "document_type": "financial_document"
+        }
+        
+        return {
+            "content": text_content,
+            "metadata": metadata,
+            "success": True
+        }
     
     def parse_documents_batch(self, folder_path: str) -> List[Dict[str, Any]]:
         """
@@ -87,14 +111,10 @@ class DocumentParser:
         parsed_docs = []
         pdf_files = self._get_pdf_files(folder_path)
         
-        self.logger.info(f"Found {len(pdf_files)} PDF files to process")
-        
         for pdf_file in pdf_files:
             parsed_doc = self.parse_document(pdf_file)
             if parsed_doc["success"]:
                 parsed_docs.append(parsed_doc)
-            else:
-                self.logger.warning(f"Failed to parse: {pdf_file}")
         
         return parsed_docs
     
@@ -102,7 +122,6 @@ class DocumentParser:
         """Get all PDF files in a folder."""
         folder = Path(folder_path)
         if not folder.exists():
-            self.logger.error(f"Folder does not exist: {folder_path}")
             return []
         
         pdf_files = []
@@ -154,48 +173,41 @@ class DocumentParser:
         return chunks
 
 
-# Alternative parser using PyMuPDF (if preferred)
-try:
-    import fitz  # PyMuPDF
+class PyMuPDFParser:
+    """Simple PDF parser using PyMuPDF."""
     
-    class PyMuPDFParser:
-        """Alternative PDF parser using PyMuPDF."""
-        
-        def __init__(self):
-            self.logger = logging.getLogger(__name__)
-        
-        def parse_document(self, file_path: str) -> Dict[str, Any]:
-            """Parse document using PyMuPDF."""
-            try:
-                doc = fitz.open(file_path)
-                text_content = ""
-                
-                for page_num in range(len(doc)):
-                    page = doc.load_page(page_num)
-                    text_content += page.get_text()
-                
-                doc.close()
-                
-                metadata = {
-                    "source": file_path,
-                    "filename": Path(file_path).name,
-                    "pages": len(doc),
-                    "document_type": "financial_document"
-                }
-                
-                return {
-                    "content": text_content,
-                    "metadata": metadata,
-                    "success": True
-                }
-                
-            except Exception as e:
-                self.logger.error(f"Error parsing with PyMuPDF: {str(e)}")
-                return {
-                    "content": "",
-                    "metadata": {"source": file_path, "error": str(e)},
-                    "success": False
-                }
-
-except ImportError:
-    PyMuPDFParser = None
+    def __init__(self):
+        if not HAS_PYMUPDF:
+            raise ImportError("PyMuPDF is required for this parser")
+    
+    def parse_document(self, file_path: str) -> Dict[str, Any]:
+        """Parse document using PyMuPDF."""
+        try:
+            doc = fitz.open(file_path)
+            text_content = ""
+            
+            for page_num in range(len(doc)):
+                page = doc.load_page(page_num)
+                text_content += page.get_text()
+            
+            doc.close()
+            
+            metadata = {
+                "source": file_path,
+                "filename": Path(file_path).name,
+                "pages": len(doc),
+                "document_type": "financial_document"
+            }
+            
+            return {
+                "content": text_content,
+                "metadata": metadata,
+                "success": True
+            }
+            
+        except Exception as e:
+            return {
+                "content": "",
+                "metadata": {"source": file_path, "error": str(e)},
+                "success": False
+            }

@@ -1,36 +1,25 @@
 #!/usr/bin/env python3
 """
-Data ingestion pipeline for FinBot.
+Simple data ingestion pipeline for FinBot.
 Process PDF documents from the Data/ folder and store them in the vector database.
 """
 
 import os
 import sys
-import logging
 from pathlib import Path
 from typing import List, Dict, Any
-import argparse
-from dotenv import load_dotenv
 
 # Add src directory to path
-sys.path.append(str(Path(__file__).parent / "src"))
+current_dir = Path(__file__).parent.parent  # Go up to src directory
+sys.path.insert(0, str(current_dir))
 
-from document_parser import DocumentParser
-from rag_pipeline import create_rag_pipeline
-
-# Load environment variables
-load_dotenv()
-
-# Configure logging
-logging.basicConfig(
-    level=getattr(logging, os.getenv("LOG_LEVEL", "INFO")),
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
+from Chunking.document_parser import DocumentParser
+from embeddings.qwen import create_embedding_service
+from vectorstore.qdrant_client import create_qdrant_client
 
 
 class DataIngestionPipeline:
-    """Pipeline for ingesting financial documents into the vector database."""
+    """Simple pipeline for ingesting financial documents into the vector database."""
     
     def __init__(self, data_folder: str = "Data"):
         """
@@ -41,11 +30,11 @@ class DataIngestionPipeline:
         """
         self.data_folder = Path(data_folder)
         self.document_parser = DocumentParser()
+        self.embedding_service = create_embedding_service()
         
-        # Initialize RAG pipeline (which includes vector DB and embedding service)
-        self.rag_pipeline = create_rag_pipeline()
-        
-        logger.info(f"Data ingestion pipeline initialized for folder: {self.data_folder}")
+        # Get embedding dimension and create vector DB
+        embedding_dim = self.embedding_service.get_embedding_dimension()
+        self.vector_db = create_qdrant_client(vector_size=embedding_dim)
     
     def ingest_documents(
         self,
@@ -65,18 +54,14 @@ class DataIngestionPipeline:
             Summary of ingestion results
         """
         if not self.data_folder.exists():
-            error_msg = f"Data folder does not exist: {self.data_folder}"
-            logger.error(error_msg)
-            return {"status": "error", "message": error_msg}
+            return {"status": "error", "message": f"Data folder does not exist: {self.data_folder}"}
         
         try:
             # Clear existing documents if requested
             if clear_existing:
-                logger.info("Clearing existing documents from vector database...")
-                self.rag_pipeline.vector_db.clear_collection()
+                self.vector_db.clear_collection()
             
             # Parse all PDF documents
-            logger.info("Parsing PDF documents...")
             parsed_documents = self.document_parser.parse_documents_batch(str(self.data_folder))
             
             if not parsed_documents:
@@ -86,32 +71,47 @@ class DataIngestionPipeline:
                     "documents_processed": 0
                 }
             
-            logger.info(f"Successfully parsed {len(parsed_documents)} documents")
+            # Process documents
+            total_chunks = 0
+            for doc in parsed_documents:
+                # Chunk the document
+                chunks = self.document_parser.chunk_text(
+                    doc["content"], 
+                    chunk_size=chunk_size, 
+                    overlap=chunk_overlap
+                )
+                
+                if not chunks:
+                    continue
+                
+                # Prepare data for embedding
+                texts = [chunk["text"] for chunk in chunks]
+                metadatas = []
+                
+                for chunk in chunks:
+                    metadata = doc["metadata"].copy()
+                    metadata.update(chunk)
+                    metadatas.append(metadata)
+                
+                # Generate embeddings
+                embeddings = self.embedding_service.encode(texts)
+                
+                # Store in vector database
+                self.vector_db.add_documents(texts, embeddings, metadatas)
+                total_chunks += len(chunks)
             
-            # Add documents to RAG pipeline (this will chunk, embed, and store them)
-            ingestion_result = self.rag_pipeline.add_documents(
-                documents=parsed_documents,
-                chunk_size=chunk_size,
-                chunk_overlap=chunk_overlap
-            )
-            
-            # Add summary information
-            ingestion_result.update({
-                "data_folder": str(self.data_folder),
-                "pdf_files_found": len(parsed_documents),
-                "chunk_size": chunk_size,
-                "chunk_overlap": chunk_overlap,
-                "cleared_existing": clear_existing
-            })
-            
-            return ingestion_result
+            return {
+                "status": "success",
+                "message": "Documents ingested successfully",
+                "documents_processed": len(parsed_documents),
+                "chunks_created": total_chunks,
+                "data_folder": str(self.data_folder)
+            }
             
         except Exception as e:
-            error_msg = f"Error during document ingestion: {str(e)}"
-            logger.error(error_msg)
             return {
                 "status": "error",
-                "message": error_msg,
+                "message": f"Error during document ingestion: {str(e)}",
                 "documents_processed": 0
             }
     
@@ -133,8 +133,6 @@ class DataIngestionPipeline:
             Ingestion results
         """
         try:
-            logger.info(f"Ingesting single file: {file_path}")
-            
             # Parse the document
             parsed_doc = self.document_parser.parse_document(file_path)
             
@@ -145,27 +143,46 @@ class DataIngestionPipeline:
                     "file_path": file_path
                 }
             
-            # Add to RAG pipeline
-            ingestion_result = self.rag_pipeline.add_documents(
-                documents=[parsed_doc],
-                chunk_size=chunk_size,
-                chunk_overlap=chunk_overlap
+            # Chunk the document
+            chunks = self.document_parser.chunk_text(
+                parsed_doc["content"], 
+                chunk_size=chunk_size, 
+                overlap=chunk_overlap
             )
             
-            ingestion_result.update({
-                "file_path": file_path,
-                "chunk_size": chunk_size,
-                "chunk_overlap": chunk_overlap
-            })
+            if not chunks:
+                return {
+                    "status": "error",
+                    "message": "No chunks created from document",
+                    "file_path": file_path
+                }
             
-            return ingestion_result
+            # Prepare data for embedding
+            texts = [chunk["text"] for chunk in chunks]
+            metadatas = []
+            
+            for chunk in chunks:
+                metadata = parsed_doc["metadata"].copy()
+                metadata.update(chunk)
+                metadatas.append(metadata)
+            
+            # Generate embeddings
+            embeddings = self.embedding_service.encode(texts)
+            
+            # Store in vector database
+            self.vector_db.add_documents(texts, embeddings, metadatas)
+            
+            return {
+                "status": "success",
+                "message": "File ingested successfully",
+                "file_path": file_path,
+                "chunks_created": len(chunks)
+            }
             
         except Exception as e:
-            error_msg = f"Error ingesting file {file_path}: {str(e)}"
-            logger.error(error_msg)
             return {
                 "status": "error",
-                "message": error_msg,
+                "message": f"Error ingesting file {file_path}: {str(e)}",
                 "file_path": file_path
             }
     
@@ -183,34 +200,16 @@ class DataIngestionPipeline:
     def get_collection_status(self) -> Dict[str, Any]:
         """Get status of the vector database collection."""
         try:
-            return self.rag_pipeline.vector_db.get_collection_info()
+            return self.vector_db.get_collection_info()
         except Exception as e:
             return {"error": str(e)}
 
 
 def main():
     """Main entry point for data ingestion script."""
-    parser = argparse.ArgumentParser(
-        description="FinBot Data Ingestion Pipeline",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""
-Examples:
-  # Ingest all documents from Data/ folder
-  python ingest_data.py --ingest-all
-  
-  # Clear existing data and ingest all documents
-  python ingest_data.py --ingest-all --clear
-  
-  # Ingest a single file
-  python ingest_data.py --file Data/document.pdf
-  
-  # List all PDF files in data folder
-  python ingest_data.py --list-files
-  
-  # Check collection status
-  python ingest_data.py --status
-        """
-    )
+    import argparse
+    
+    parser = argparse.ArgumentParser(description="FinBot Data Ingestion Pipeline")
     
     parser.add_argument(
         "--data-folder",
@@ -267,13 +266,13 @@ Examples:
     try:
         pipeline = DataIngestionPipeline(data_folder=args.data_folder)
     except Exception as e:
-        logger.error(f"Failed to initialize pipeline: {str(e)}")
+        print(f"Failed to initialize pipeline: {str(e)}")
         return 1
     
     # Execute requested action
     try:
         if args.list_files:
-            print(f"\n📁 PDF files in {args.data_folder}:")
+            print(f"\nPDF files in {args.data_folder}:")
             files = pipeline.list_data_files()
             if files:
                 for i, file_path in enumerate(files, 1):
@@ -283,10 +282,10 @@ Examples:
                 print("  No PDF files found")
         
         elif args.status:
-            print("\n📊 Vector Database Status:")
+            print("\nVector Database Status:")
             status = pipeline.get_collection_status()
             if "error" in status:
-                print(f"  ❌ Error: {status['error']}")
+                print(f"  Error: {status['error']}")
             else:
                 print(f"  Collection: {status.get('name', 'Unknown')}")
                 print(f"  Documents: {status.get('points_count', 0)}")
@@ -294,7 +293,7 @@ Examples:
                 print(f"  Status: {status.get('status', 'Unknown')}")
         
         elif args.file:
-            print(f"\n📄 Ingesting single file: {args.file}")
+            print(f"\nIngesting single file: {args.file}")
             result = pipeline.ingest_single_file(
                 file_path=args.file,
                 chunk_size=args.chunk_size,
@@ -302,16 +301,14 @@ Examples:
             )
             
             if result["status"] == "success":
-                print(f"  ✅ Success!")
-                print(f"  Chunks created: {result['chunks_created']}")
-                print(f"  Embeddings generated: {result['embeddings_generated']}")
+                print(f"  Success! Chunks created: {result['chunks_created']}")
             else:
-                print(f"  ❌ Failed: {result['message']}")
+                print(f"  Failed: {result['message']}")
         
         elif args.ingest_all:
-            print(f"\n📚 Ingesting all documents from: {args.data_folder}")
+            print(f"\nIngesting all documents from: {args.data_folder}")
             if args.clear:
-                print("  🗑️  Clearing existing documents...")
+                print("  Clearing existing documents...")
             
             result = pipeline.ingest_documents(
                 chunk_size=args.chunk_size,
@@ -320,12 +317,11 @@ Examples:
             )
             
             if result["status"] == "success":
-                print(f"  ✅ Success!")
-                print(f"  PDF files processed: {result['pdf_files_found']}")
+                print(f"  Success!")
+                print(f"  PDF files processed: {result['documents_processed']}")
                 print(f"  Chunks created: {result['chunks_created']}")
-                print(f"  Embeddings generated: {result['embeddings_generated']}")
             else:
-                print(f"  ❌ Failed: {result['message']}")
+                print(f"  Failed: {result['message']}")
         
         else:
             parser.print_help()
@@ -334,7 +330,7 @@ Examples:
         return 0
         
     except Exception as e:
-        logger.error(f"Error during execution: {str(e)}")
+        print(f"Error during execution: {str(e)}")
         return 1
 
 
