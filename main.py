@@ -27,29 +27,29 @@ except ImportError as e:
 
 def main():
     """Main entry point."""
-    print("🤖 FinBot - Financial Literacy Assistant")
+    print("FinBot - Financial Literacy Assistant")
     print("=" * 50)
     print("Ask me anything about financial literacy! Type 'quit' to exit.\n")
     
     # Initialize FinBot
     finbot = create_finbot_chatbot()
     if not finbot.rag_pipeline:
-        print("❌ Failed to initialize FinBot. Please check your configuration.")
+        print("ERROR: Failed to initialize FinBot. Please check your configuration.")
         return
     
     # Chat loop
     while True:
         try:
-            question = input("\n💬 You: ").strip()
+            question = input("\nYou: ").strip()
             
             if question.lower() in ['quit', 'exit', 'bye']:
-                print("\n👋 Goodbye! Thanks for using FinBot!")
+                print("\nGoodbye! Thanks for using FinBot!")
                 break
             
             if not question:
                 continue
             
-            print("\n🤖 FinBot: ", end="", flush=True)
+            print("\nFinBot: ", end="", flush=True)
             
             # Get response
             response_data = finbot.chat(question)
@@ -58,10 +58,10 @@ def main():
             print(answer)
             
         except KeyboardInterrupt:
-            print("\n\n👋 Goodbye! Thanks for using FinBot!")
+            print("\n\nGoodbye! Thanks for using FinBot!")
             break
         except Exception as e:
-            print(f"\n❌ Error: {str(e)}")
+            print(f"\nERROR: {str(e)}")
 
 
 if __name__ == "__main__":

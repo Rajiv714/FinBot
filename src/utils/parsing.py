@@ -1,29 +1,14 @@
-"""
-Simple document parser for PDF files using Docling with OCR.
-"""
-
 import os
 from typing import List, Dict, Any, Optional
 from pathlib import Path
-
-try:
-    from docling.document_converter import DocumentConverter
-    from docling.datamodel.base_models import InputFormat
-    from docling.datamodel.pipeline_options import PdfPipelineOptions
-    from docling.backend.pdf_backend import PdfFormatOption
-    HAS_DOCLING = True
-except ImportError:
-    HAS_DOCLING = False
-
+from docling.document_converter import DocumentConverter
+from docling.datamodel.base_models import InputFormat
+from docling.datamodel.pipeline_options import PdfPipelineOptions
+from docling.backend.pdf_backend import PdfFormatOption
+ 
 
 class DocumentParser:
-    """PDF parser using Docling with OCR capabilities."""
-    
     def __init__(self):
-        """Initialize the document parser with OCR-enabled Docling."""
-        if not HAS_DOCLING:
-            raise ImportError("Docling is required for PDF parsing")
-        
         # Configure pipeline options for OCR and table structure
         options = PdfPipelineOptions()
         options.do_ocr = options.do_table_structure = True
@@ -34,15 +19,6 @@ class DocumentParser:
         })
     
     def parse_document(self, file_path: str) -> Dict[str, Any]:
-        """
-        Parse a single PDF document using Docling with OCR.
-        
-        Args:
-            file_path: Path to the PDF file
-            
-        Returns:
-            Dictionary containing parsed content and metadata
-        """
         try:
             return self._parse_with_docling(file_path)
         except Exception as e:
@@ -72,15 +48,6 @@ class DocumentParser:
         }
     
     def parse_documents_batch(self, folder_path: str) -> List[Dict[str, Any]]:
-        """
-        Parse all PDF documents in a folder.
-        
-        Args:
-            folder_path: Path to folder containing PDF files
-            
-        Returns:
-            List of parsed document dictionaries
-        """
         parsed_docs = []
         pdf_files = self._get_pdf_files(folder_path)
         

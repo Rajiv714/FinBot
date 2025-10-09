@@ -21,6 +21,10 @@ class RAGPipeline:
     
     def __init__(self):
         """Initialize the RAG pipeline with all components."""
+        # Load default configuration from environment
+        self.default_top_k = int(os.getenv("TOP_K_RESULTS", "5"))
+        self.default_score_threshold = float(os.getenv("SCORE_THRESHOLD", "0.3"))
+        
         # Initialize embedding service
         self.embedding_service = create_embedding_service()
         
@@ -30,6 +34,42 @@ class RAGPipeline:
         
         # Initialize Gemini LLM service
         self.llm_service = create_gemini_service()
+    
+    def _get_retrieval_params(self, top_k: Optional[int], score_threshold: Optional[float]) -> tuple:
+        """Get retrieval parameters with fallback to defaults."""
+        effective_top_k = top_k if top_k is not None else self.default_top_k
+        effective_score_threshold = score_threshold if score_threshold is not None else self.default_score_threshold
+        return effective_top_k, effective_score_threshold
+    
+    def _retrieve_context(self, query: str, top_k: int, score_threshold: float) -> tuple:
+        """Retrieve relevant context for a query."""
+        sources = []
+        context = ""
+        
+        # Generate query embedding
+        query_embedding = self.embedding_service.encode([query])[0]
+        
+        # Retrieve similar documents
+        search_results = self.vector_db.search(
+            query_embedding=query_embedding,
+            limit=top_k,
+            score_threshold=score_threshold
+        )
+        
+        # Format context and sources
+        if search_results:
+            context_parts = []
+            for result in search_results:
+                context_parts.append(result["text"])
+                sources.append({
+                    "text": result["text"][:500] + "..." if len(result["text"]) > 500 else result["text"],
+                    "score": result["score"],
+                    "metadata": result["metadata"]
+                })
+            
+            context = "\n\n".join(context_parts)
+        
+        return context, sources
     
     def query(
         self,
@@ -44,8 +84,8 @@ class RAGPipeline:
         
         Args:
             question: User question
-            top_k: Number of similar documents to retrieve (uses env variable if None)
-            score_threshold: Minimum similarity score for retrieval (uses env variable if None)
+            top_k: Number of similar documents to retrieve
+            score_threshold: Minimum similarity score for retrieval
             include_context: Whether to include retrieved context in response
             **kwargs: Additional arguments for LLM generation
             
@@ -53,38 +93,13 @@ class RAGPipeline:
             Dictionary with answer, sources, and metadata
         """
         try:
-            # Use environment variables if not provided
-            if top_k is None:
-                top_k = int(os.getenv("TOP_K_RESULTS", "5"))
-            if score_threshold is None:
-                score_threshold = float(os.getenv("SCORE_THRESHOLD", "0.3"))
+            effective_top_k, effective_score_threshold = self._get_retrieval_params(top_k, score_threshold)
             
             sources = []
             context = ""
             
             if include_context:
-                # Generate query embedding
-                query_embedding = self.embedding_service.encode([question])[0]
-                
-                # Retrieve similar documents
-                search_results = self.vector_db.search(
-                    query_embedding=query_embedding,
-                    limit=top_k,
-                    score_threshold=score_threshold
-                )
-                
-                # Format context and sources
-                if search_results:
-                    context_parts = []
-                    for result in search_results:
-                        context_parts.append(result["text"])
-                        sources.append({
-                            "text": result["text"][:500] + "..." if len(result["text"]) > 500 else result["text"],
-                            "score": result["score"],
-                            "metadata": result["metadata"]
-                        })
-                    
-                    context = "\n\n".join(context_parts)
+                context, sources = self._retrieve_context(question, effective_top_k, effective_score_threshold)
             
             # Generate response using LLM
             answer = self.llm_service.generate_response(
@@ -122,8 +137,8 @@ class RAGPipeline:
         
         Args:
             messages: List of chat messages
-            top_k: Number of similar documents to retrieve (uses env variable if None)
-            score_threshold: Minimum similarity score for retrieval (uses env variable if None)
+            top_k: Number of similar documents to retrieve
+            score_threshold: Minimum similarity score for retrieval
             include_context: Whether to include retrieved context
             **kwargs: Additional arguments for LLM generation
             
@@ -131,11 +146,7 @@ class RAGPipeline:
             Dictionary with answer, sources, and metadata
         """
         try:
-            # Use environment variables if not provided
-            if top_k is None:
-                top_k = int(os.getenv("TOP_K_RESULTS", "5"))
-            if score_threshold is None:
-                score_threshold = float(os.getenv("SCORE_THRESHOLD", "0.3"))
+            effective_top_k, effective_score_threshold = self._get_retrieval_params(top_k, score_threshold)
             
             # Get the last user message as the query
             last_message = None
@@ -155,29 +166,10 @@ class RAGPipeline:
             enhanced_messages = messages.copy()
             
             if include_context:
-                # Generate query embedding for the last user message
-                query_embedding = self.embedding_service.encode([last_message])[0]
-                
-                # Retrieve similar documents
-                search_results = self.vector_db.search(
-                    query_embedding=query_embedding,
-                    limit=top_k,
-                    score_threshold=score_threshold
-                )
+                context, sources = self._retrieve_context(last_message, effective_top_k, effective_score_threshold)
                 
                 # Add context to the conversation if we found relevant documents
-                if search_results:
-                    context_parts = []
-                    for result in search_results:
-                        context_parts.append(result["text"])
-                        sources.append({
-                            "text": result["text"][:500] + "..." if len(result["text"]) > 500 else result["text"],
-                            "score": result["score"],
-                            "metadata": result["metadata"]
-                        })
-                    
-                    context = "\n\n".join(context_parts)
-                    
+                if context:
                     # Insert context before the last user message
                     enhanced_messages[-1]["content"] = f"Context from financial documents:\n{context}\n\nQuestion: {last_message}"
             
@@ -229,8 +221,8 @@ class RAGPipeline:
                 "configuration": {
                     "chunk_size": int(os.getenv("CHUNK_SIZE", "1000")),
                     "chunk_overlap": int(os.getenv("CHUNK_OVERLAP", "200")),
-                    "top_k_results": int(os.getenv("TOP_K_RESULTS", "5")),
-                    "score_threshold": float(os.getenv("SCORE_THRESHOLD", "0.3"))
+                    "top_k_results": self.default_top_k,
+                    "score_threshold": self.default_score_threshold
                 }
             }
             

@@ -35,6 +35,10 @@ class QdrantVectorDB:
         self.collection_name = collection_name
         self.vector_size = vector_size
         
+        # Load default retrieval parameters
+        self.default_top_k = int(os.getenv("TOP_K_RESULTS", "5"))
+        self.default_score_threshold = float(os.getenv("SCORE_THRESHOLD", "0.3"))
+        
         # Initialize client
         self.client = QdrantClient(host=host, port=port)
         
@@ -60,8 +64,8 @@ class QdrantVectorDB:
                 collection_info = self.client.get_collection(collection_name=self.collection_name)
                 existing_size = collection_info.config.params.vectors.size
                 if existing_size != self.vector_size:
-                    print(f"⚠️  Vector size mismatch: collection has {existing_size}, but model needs {self.vector_size}")
-                    print(f"🔄 Recreating collection '{self.collection_name}' with correct dimensions...")
+                    print(f"WARNING: Vector size mismatch: collection has {existing_size}, but model needs {self.vector_size}")
+                    print(f"Recreating collection '{self.collection_name}' with correct dimensions...")
                     self._recreate_collection()
         except Exception as e:
             raise RuntimeError(f"Failed to create collection: {str(e)}")
@@ -80,7 +84,7 @@ class QdrantVectorDB:
                     distance=Distance.COSINE
                 )
             )
-            print(f"✅ Collection '{self.collection_name}' recreated with vector size {self.vector_size}")
+            print(f"SUCCESS: Collection '{self.collection_name}' recreated with vector size {self.vector_size}")
         except Exception as e:
             raise RuntimeError(f"Failed to recreate collection: {str(e)}")
     
@@ -139,28 +143,26 @@ class QdrantVectorDB:
         
         Args:
             query_embedding: Query embedding vector
-            limit: Maximum number of results to return (uses env variable if None)
-            score_threshold: Minimum similarity score threshold (uses env variable if None)
+            limit: Maximum number of results to return
+            score_threshold: Minimum similarity score threshold
             
         Returns:
             List of search results with text, metadata, and scores
         """
-        # Use environment variables if not provided
-        if limit is None:
-            limit = int(os.getenv("TOP_K_RESULTS", "5"))
-        if score_threshold is None:
-            score_threshold = float(os.getenv("SCORE_THRESHOLD", "0.3"))
+        # Use instance defaults if not provided
+        effective_limit = limit if limit is not None else self.default_top_k
+        effective_threshold = score_threshold if score_threshold is not None else self.default_score_threshold
         
         search_params = {
             "collection_name": self.collection_name,
             "query_vector": query_embedding.tolist(),
-            "limit": limit,
+            "limit": effective_limit,
             "with_payload": True,
             "with_vectors": False
         }
         
-        if score_threshold is not None:
-            search_params["score_threshold"] = score_threshold
+        if effective_threshold is not None:
+            search_params["score_threshold"] = effective_threshold
         
         results = self.client.search(**search_params)
         

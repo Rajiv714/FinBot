@@ -14,6 +14,7 @@ current_dir = Path(__file__).parent.parent  # Go up to src directory
 sys.path.insert(0, str(current_dir))
 
 from utils.parsing import DocumentParser
+from utils.chunking import create_text_chunker
 from embeddings.embeddings import create_embedding_service
 from vectorstore.qdrant_client import create_qdrant_client
 
@@ -30,11 +31,22 @@ class DataIngestionPipeline:
         """
         self.data_folder = Path(data_folder)
         self.document_parser = DocumentParser()
+        self.text_chunker = create_text_chunker()
         self.embedding_service = create_embedding_service()
+        
+        # Load default chunking parameters
+        self.default_chunk_size = int(os.getenv("CHUNK_SIZE", "1000"))
+        self.default_chunk_overlap = int(os.getenv("CHUNK_OVERLAP", "200"))
         
         # Get embedding dimension and create vector DB
         embedding_dim = self.embedding_service.get_embedding_dimension()
         self.vector_db = create_qdrant_client(vector_size=embedding_dim)
+    
+    def _get_chunking_params(self, chunk_size: Optional[int], chunk_overlap: Optional[int]) -> tuple:
+        """Get chunking parameters with fallback to defaults."""
+        effective_chunk_size = chunk_size if chunk_size is not None else self.default_chunk_size
+        effective_chunk_overlap = chunk_overlap if chunk_overlap is not None else self.default_chunk_overlap
+        return effective_chunk_size, effective_chunk_overlap
     
     def ingest_documents(
         self,
@@ -46,18 +58,14 @@ class DataIngestionPipeline:
         Ingest all PDF documents from the data folder.
         
         Args:
-            chunk_size: Size of text chunks for processing (uses env variable if None)
-            chunk_overlap: Overlap between consecutive chunks (uses env variable if None)
+            chunk_size: Size of text chunks for processing
+            chunk_overlap: Overlap between consecutive chunks
             clear_existing: Whether to clear existing documents first
             
         Returns:
             Summary of ingestion results
         """
-        # Use environment variables if not provided
-        if chunk_size is None:
-            chunk_size = int(os.getenv("CHUNK_SIZE", "1000"))
-        if chunk_overlap is None:
-            chunk_overlap = int(os.getenv("CHUNK_OVERLAP", "200"))
+        effective_chunk_size, effective_chunk_overlap = self._get_chunking_params(chunk_size, chunk_overlap)
         
         if not self.data_folder.exists():
             return {"status": "error", "message": f"Data folder does not exist: {self.data_folder}"}
@@ -81,10 +89,10 @@ class DataIngestionPipeline:
             total_chunks = 0
             for doc in parsed_documents:
                 # Chunk the document with configurable parameters
-                chunks = self.document_parser.chunk_text(
+                chunks = self.text_chunker.chunk_text(
                     doc["content"], 
-                    chunk_size=chunk_size, 
-                    overlap=chunk_overlap
+                    chunk_size=effective_chunk_size, 
+                    overlap=effective_chunk_overlap
                 )
                 
                 if not chunks:
@@ -112,8 +120,8 @@ class DataIngestionPipeline:
                 "documents_processed": len(parsed_documents),
                 "chunks_created": total_chunks,
                 "data_folder": str(self.data_folder),
-                "chunk_size": chunk_size,
-                "chunk_overlap": chunk_overlap
+                "chunk_size": effective_chunk_size,
+                "chunk_overlap": effective_chunk_overlap
             }
             
         except Exception as e:
@@ -134,17 +142,13 @@ class DataIngestionPipeline:
         
         Args:
             file_path: Path to the PDF file
-            chunk_size: Size of text chunks (uses env variable if None)
-            chunk_overlap: Overlap between chunks (uses env variable if None)
+            chunk_size: Size of text chunks
+            chunk_overlap: Overlap between chunks
             
         Returns:
             Ingestion results
         """
-        # Use environment variables if not provided
-        if chunk_size is None:
-            chunk_size = int(os.getenv("CHUNK_SIZE", "1000"))
-        if chunk_overlap is None:
-            chunk_overlap = int(os.getenv("CHUNK_OVERLAP", "200"))
+        effective_chunk_size, effective_chunk_overlap = self._get_chunking_params(chunk_size, chunk_overlap)
         
         try:
             # Parse the document
@@ -158,10 +162,10 @@ class DataIngestionPipeline:
                 }
             
             # Chunk the document with configurable parameters
-            chunks = self.document_parser.chunk_text(
+            chunks = self.text_chunker.chunk_text(
                 parsed_doc["content"], 
-                chunk_size=chunk_size, 
-                overlap=chunk_overlap
+                chunk_size=effective_chunk_size, 
+                overlap=effective_chunk_overlap
             )
             
             if not chunks:
@@ -191,8 +195,8 @@ class DataIngestionPipeline:
                 "message": "File ingested successfully",
                 "file_path": file_path,
                 "chunks_created": len(chunks),
-                "chunk_size": chunk_size,
-                "chunk_overlap": chunk_overlap
+                "chunk_size": effective_chunk_size,
+                "chunk_overlap": effective_chunk_overlap
             }
             
         except Exception as e:
