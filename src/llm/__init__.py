@@ -2,6 +2,6 @@
 LLM services initialization and utilities.
 """
 
-from .llama import LlamaLLMService, create_llama_service
+from .gemini import GeminiLLMService, create_gemini_service
 
-__all__ = ['LlamaLLMService', 'create_llama_service']
+__all__ = ['GeminiLLMService', 'create_gemini_service']

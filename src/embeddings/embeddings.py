@@ -11,7 +11,7 @@ from sentence_transformers import SentenceTransformer
 class EmbeddingService:
     """Simple embedding service using SentenceTransformers."""
     
-    def __init__(self, model_name: str = "all-MiniLM-L6-v2"):
+    def __init__(self, model_name: str = "BAAI/bge-large-en-v1.5"):
         """
         Initialize the embedding service.
         
@@ -61,14 +61,16 @@ class EmbeddingService:
         return float(similarity[0][0])
 
 
-def create_embedding_service(model_name: str = "all-MiniLM-L6-v2") -> EmbeddingService:
+def create_embedding_service(model_name: str = None) -> EmbeddingService:
     """
     Factory function to create embedding service.
     
     Args:
-        model_name: Model name
+        model_name: Model name (if None, uses environment variable)
         
     Returns:
         Configured EmbeddingService instance
     """
+    if model_name is None:
+        model_name = os.getenv("EMBEDDING_MODEL", "BAAI/bge-large-en-v1.5")
     return EmbeddingService(model_name=model_name)

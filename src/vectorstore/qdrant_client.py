@@ -19,7 +19,7 @@ class QdrantVectorDB:
         host: str = "localhost",
         port: int = 6333,
         collection_name: str = "financial_documents",
-        vector_size: int = 384  # Default for all-MiniLM-L6-v2
+        vector_size: int = 1024  # Default for BAAI/bge-large-en-v1.5
     ):
         """
         Initialize Qdrant client.
@@ -55,8 +55,34 @@ class QdrantVectorDB:
                         distance=Distance.COSINE
                     )
                 )
+            else:
+                # Check if existing collection has the correct vector size
+                collection_info = self.client.get_collection(collection_name=self.collection_name)
+                existing_size = collection_info.config.params.vectors.size
+                if existing_size != self.vector_size:
+                    print(f"⚠️  Vector size mismatch: collection has {existing_size}, but model needs {self.vector_size}")
+                    print(f"🔄 Recreating collection '{self.collection_name}' with correct dimensions...")
+                    self._recreate_collection()
         except Exception as e:
             raise RuntimeError(f"Failed to create collection: {str(e)}")
+    
+    def _recreate_collection(self):
+        """Delete and recreate the collection with correct vector size."""
+        try:
+            # Delete existing collection
+            self.client.delete_collection(collection_name=self.collection_name)
+            
+            # Create new collection with correct vector size
+            self.client.create_collection(
+                collection_name=self.collection_name,
+                vectors_config=VectorParams(
+                    size=self.vector_size,
+                    distance=Distance.COSINE
+                )
+            )
+            print(f"✅ Collection '{self.collection_name}' recreated with vector size {self.vector_size}")
+        except Exception as e:
+            raise RuntimeError(f"Failed to recreate collection: {str(e)}")
     
     def add_documents(
         self,
@@ -105,7 +131,7 @@ class QdrantVectorDB:
     def search(
         self,
         query_embedding: np.ndarray,
-        limit: int = 5,
+        limit: Optional[int] = None,
         score_threshold: Optional[float] = None
     ) -> List[Dict[str, Any]]:
         """
@@ -113,12 +139,18 @@ class QdrantVectorDB:
         
         Args:
             query_embedding: Query embedding vector
-            limit: Maximum number of results to return
-            score_threshold: Minimum similarity score threshold
+            limit: Maximum number of results to return (uses env variable if None)
+            score_threshold: Minimum similarity score threshold (uses env variable if None)
             
         Returns:
             List of search results with text, metadata, and scores
         """
+        # Use environment variables if not provided
+        if limit is None:
+            limit = int(os.getenv("TOP_K_RESULTS", "5"))
+        if score_threshold is None:
+            score_threshold = float(os.getenv("SCORE_THRESHOLD", "0.3"))
+        
         search_params = {
             "collection_name": self.collection_name,
             "query_vector": query_embedding.tolist(),
@@ -185,7 +217,7 @@ def create_qdrant_client(
     host: str = "localhost",
     port: int = 6333,
     collection_name: str = "financial_documents",
-    vector_size: int = 384
+    vector_size: int = 1024  # Default for BAAI/bge-large-en-v1.5
 ) -> QdrantVectorDB:
     """
     Factory function to create Qdrant client.

@@ -7,14 +7,14 @@ Process PDF documents from the Data/ folder and store them in the vector databas
 import os
 import sys
 from pathlib import Path
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 
 # Add src directory to path
 current_dir = Path(__file__).parent.parent  # Go up to src directory
 sys.path.insert(0, str(current_dir))
 
-from Chunking.document_parser import DocumentParser
-from embeddings.qwen import create_embedding_service
+from utils.parsing import DocumentParser
+from embeddings.embeddings import create_embedding_service
 from vectorstore.qdrant_client import create_qdrant_client
 
 
@@ -38,21 +38,27 @@ class DataIngestionPipeline:
     
     def ingest_documents(
         self,
-        chunk_size: int = 1000,
-        chunk_overlap: int = 200,
+        chunk_size: Optional[int] = None,
+        chunk_overlap: Optional[int] = None,
         clear_existing: bool = False
     ) -> Dict[str, Any]:
         """
         Ingest all PDF documents from the data folder.
         
         Args:
-            chunk_size: Size of text chunks for processing
-            chunk_overlap: Overlap between consecutive chunks
+            chunk_size: Size of text chunks for processing (uses env variable if None)
+            chunk_overlap: Overlap between consecutive chunks (uses env variable if None)
             clear_existing: Whether to clear existing documents first
             
         Returns:
             Summary of ingestion results
         """
+        # Use environment variables if not provided
+        if chunk_size is None:
+            chunk_size = int(os.getenv("CHUNK_SIZE", "1000"))
+        if chunk_overlap is None:
+            chunk_overlap = int(os.getenv("CHUNK_OVERLAP", "200"))
+        
         if not self.data_folder.exists():
             return {"status": "error", "message": f"Data folder does not exist: {self.data_folder}"}
         
@@ -74,7 +80,7 @@ class DataIngestionPipeline:
             # Process documents
             total_chunks = 0
             for doc in parsed_documents:
-                # Chunk the document
+                # Chunk the document with configurable parameters
                 chunks = self.document_parser.chunk_text(
                     doc["content"], 
                     chunk_size=chunk_size, 
@@ -105,7 +111,9 @@ class DataIngestionPipeline:
                 "message": "Documents ingested successfully",
                 "documents_processed": len(parsed_documents),
                 "chunks_created": total_chunks,
-                "data_folder": str(self.data_folder)
+                "data_folder": str(self.data_folder),
+                "chunk_size": chunk_size,
+                "chunk_overlap": chunk_overlap
             }
             
         except Exception as e:
@@ -118,20 +126,26 @@ class DataIngestionPipeline:
     def ingest_single_file(
         self,
         file_path: str,
-        chunk_size: int = 1000,
-        chunk_overlap: int = 200
+        chunk_size: Optional[int] = None,
+        chunk_overlap: Optional[int] = None
     ) -> Dict[str, Any]:
         """
         Ingest a single PDF file.
         
         Args:
             file_path: Path to the PDF file
-            chunk_size: Size of text chunks
-            chunk_overlap: Overlap between chunks
+            chunk_size: Size of text chunks (uses env variable if None)
+            chunk_overlap: Overlap between chunks (uses env variable if None)
             
         Returns:
             Ingestion results
         """
+        # Use environment variables if not provided
+        if chunk_size is None:
+            chunk_size = int(os.getenv("CHUNK_SIZE", "1000"))
+        if chunk_overlap is None:
+            chunk_overlap = int(os.getenv("CHUNK_OVERLAP", "200"))
+        
         try:
             # Parse the document
             parsed_doc = self.document_parser.parse_document(file_path)
@@ -143,7 +157,7 @@ class DataIngestionPipeline:
                     "file_path": file_path
                 }
             
-            # Chunk the document
+            # Chunk the document with configurable parameters
             chunks = self.document_parser.chunk_text(
                 parsed_doc["content"], 
                 chunk_size=chunk_size, 
@@ -176,7 +190,9 @@ class DataIngestionPipeline:
                 "status": "success",
                 "message": "File ingested successfully",
                 "file_path": file_path,
-                "chunks_created": len(chunks)
+                "chunks_created": len(chunks),
+                "chunk_size": chunk_size,
+                "chunk_overlap": chunk_overlap
             }
             
         except Exception as e:

@@ -3,6 +3,7 @@ Simple RAG pipeline that orchestrates document retrieval and response generation
 """
 
 import sys
+import os
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 
@@ -10,9 +11,9 @@ from typing import List, Dict, Any, Optional
 current_dir = Path(__file__).parent
 sys.path.insert(0, str(current_dir))
 
-from embeddings.qwen import create_embedding_service
+from embeddings.embeddings import create_embedding_service
 from vectorstore.qdrant_client import create_qdrant_client
-from llm.llama import create_llama_service
+from llm.gemini import create_gemini_service
 
 
 class RAGPipeline:
@@ -27,14 +28,14 @@ class RAGPipeline:
         embedding_dim = self.embedding_service.get_embedding_dimension()
         self.vector_db = create_qdrant_client(vector_size=embedding_dim)
         
-        # Initialize LLM service
-        self.llm_service = create_llama_service()
+        # Initialize Gemini LLM service
+        self.llm_service = create_gemini_service()
     
     def query(
         self,
         question: str,
-        top_k: int = 5,
-        score_threshold: float = 0.3,
+        top_k: Optional[int] = None,
+        score_threshold: Optional[float] = None,
         include_context: bool = True,
         **kwargs
     ) -> Dict[str, Any]:
@@ -43,8 +44,8 @@ class RAGPipeline:
         
         Args:
             question: User question
-            top_k: Number of similar documents to retrieve
-            score_threshold: Minimum similarity score for retrieval
+            top_k: Number of similar documents to retrieve (uses env variable if None)
+            score_threshold: Minimum similarity score for retrieval (uses env variable if None)
             include_context: Whether to include retrieved context in response
             **kwargs: Additional arguments for LLM generation
             
@@ -52,6 +53,12 @@ class RAGPipeline:
             Dictionary with answer, sources, and metadata
         """
         try:
+            # Use environment variables if not provided
+            if top_k is None:
+                top_k = int(os.getenv("TOP_K_RESULTS", "5"))
+            if score_threshold is None:
+                score_threshold = float(os.getenv("SCORE_THRESHOLD", "0.3"))
+            
             sources = []
             context = ""
             
@@ -105,8 +112,8 @@ class RAGPipeline:
     def chat(
         self,
         messages: List[Dict[str, str]],
-        top_k: int = 5,
-        score_threshold: float = 0.3,
+        top_k: Optional[int] = None,
+        score_threshold: Optional[float] = None,
         include_context: bool = True,
         **kwargs
     ) -> Dict[str, Any]:
@@ -115,8 +122,8 @@ class RAGPipeline:
         
         Args:
             messages: List of chat messages
-            top_k: Number of similar documents to retrieve
-            score_threshold: Minimum similarity score for retrieval
+            top_k: Number of similar documents to retrieve (uses env variable if None)
+            score_threshold: Minimum similarity score for retrieval (uses env variable if None)
             include_context: Whether to include retrieved context
             **kwargs: Additional arguments for LLM generation
             
@@ -124,6 +131,12 @@ class RAGPipeline:
             Dictionary with answer, sources, and metadata
         """
         try:
+            # Use environment variables if not provided
+            if top_k is None:
+                top_k = int(os.getenv("TOP_K_RESULTS", "5"))
+            if score_threshold is None:
+                score_threshold = float(os.getenv("SCORE_THRESHOLD", "0.3"))
+            
             # Get the last user message as the query
             last_message = None
             for msg in reversed(messages):
@@ -208,8 +221,16 @@ class RAGPipeline:
                     "dimension": embedding_dim
                 },
                 "llm_service": {
-                    "model_path": self.llm_service.model_path,
-                    "device": self.llm_service.device
+                    "model_name": self.llm_service.model_name,
+                    "api_configured": bool(self.llm_service.api_key),
+                    "temperature": self.llm_service.temperature,
+                    "max_tokens": self.llm_service.max_tokens
+                },
+                "configuration": {
+                    "chunk_size": int(os.getenv("CHUNK_SIZE", "1000")),
+                    "chunk_overlap": int(os.getenv("CHUNK_OVERLAP", "200")),
+                    "top_k_results": int(os.getenv("TOP_K_RESULTS", "5")),
+                    "score_threshold": float(os.getenv("SCORE_THRESHOLD", "0.3"))
                 }
             }
             
