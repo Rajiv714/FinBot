@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-FinBot - Simple Financial Literacy Chatbot
-Main file for the RAG-based financial Q&A chatbot.
+FinBot - Financial Literacy Chatbot Terminal Interface
+Terminal-only interface for FinBot.
 """
 
 import os
@@ -17,52 +17,44 @@ src_path = str(Path(__file__).parent / "src")
 if src_path not in sys.path:
     sys.path.insert(0, src_path)
 
-try:
-    from chatbot import create_finbot_chatbot
-except ImportError as e:
-    print(f"Import error: {e}")
-    print("Please make sure all dependencies are installed.")
-    sys.exit(1)
-
+def main_menu():
+    """Display main menu and handle user choices."""
+    while True:
+        print("\n" + "=" * 40)
+        print("           MAIN MENU")
+        print("=" * 40)
+        print("1. Interactive Chat")
+        print("2. Ingest Financial Documents")
+        print("3. Generate Educational Handout")
+        print("4. Exit")
+        print("=" * 40)
+        
+        choice = input("Enter your choice (1-4): ").strip()
+        
+        if choice == "1":
+            from Chatbot import run_chatbot
+            run_chatbot()
+        elif choice == "2":
+            from Data_ingestion import interactive_ingestion
+            interactive_ingestion()
+        elif choice == "3":
+            from Handout_Creator import run_handout_creator
+            run_handout_creator()
+        elif choice == "4":
+            print("\nThank you for using FinBot! Goodbye!")
+            break
+        else:
+            print("Invalid choice. Please enter 1, 2, 3, or 4.")
 
 def main():
-    """Main entry point."""
-    print("FinBot - Financial Literacy Assistant")
-    print("=" * 50)
-    print("Ask me anything about financial literacy! Type 'quit' to exit.\n")
-    
-    # Initialize FinBot
-    finbot = create_finbot_chatbot()
-    if not finbot.rag_pipeline:
-        print("ERROR: Failed to initialize FinBot. Please check your configuration.")
-        return
-    
-    # Chat loop
-    while True:
-        try:
-            question = input("\nYou: ").strip()
-            
-            if question.lower() in ['quit', 'exit', 'bye']:
-                print("\nGoodbye! Thanks for using FinBot!")
-                break
-            
-            if not question:
-                continue
-            
-            print("\nFinBot: ", end="", flush=True)
-            
-            # Get response
-            response_data = finbot.chat(question)
-            answer = response_data.get("answer", "I couldn't generate a response.")
-            
-            print(answer)
-            
-        except KeyboardInterrupt:
-            print("\n\nGoodbye! Thanks for using FinBot!")
-            break
-        except Exception as e:
-            print(f"\nERROR: {str(e)}")
+    """Main entry point for terminal mode."""
+    try:
+        main_menu()
+    except KeyboardInterrupt:
+        print("\n\nGoodbye! Thanks for using FinBot!")
+    except Exception as e:
+        print(f"\nERROR: {str(e)}")
 
-
+# Run terminal interface
 if __name__ == "__main__":
     main()

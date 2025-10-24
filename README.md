@@ -42,7 +42,7 @@ The project follows a modular architecture with clear separation of responsibili
    QDRANT_PORT=6333
    
    # Gemini Configuration
-   GEMINI_MODEL=gemini-2.0-flash-exp
+   GEMINI_MODEL=gemini-2.0-flash
    GEMINI_API_KEY=your_api_key_here
    
    # Embedding Configuration
@@ -111,7 +111,7 @@ All configuration is handled through environment variables with sensible default
 | `TEMPERATURE` | LLM response creativity (0.0-1.0) | 0.1 |
 | `MAX_TOKENS` | Maximum response length | 1024 |
 | `EMBEDDING_MODEL` | SentenceTransformer model name | BAAI/bge-large-en-v1.5 |
-| `GEMINI_MODEL` | Gemini model variant | gemini-2.0-flash-exp |
+| `GEMINI_MODEL` | Gemini model variant | gemini-2.0-flash |
 
 ## Project Structure
 

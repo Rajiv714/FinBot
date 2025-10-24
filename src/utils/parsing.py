@@ -1,10 +1,9 @@
 import os
 from typing import List, Dict, Any, Optional
 from pathlib import Path
-from docling.document_converter import DocumentConverter
+from docling.document_converter import DocumentConverter, PdfFormatOption
 from docling.datamodel.base_models import InputFormat
 from docling.datamodel.pipeline_options import PdfPipelineOptions
-from docling.backend.pdf_backend import PdfFormatOption
  
 
 class DocumentParser:
@@ -33,12 +32,23 @@ class DocumentParser:
         result = self.converter.convert(file_path)
         text_content = result.document.export_to_markdown()
         
+        # Extract page-wise content for better tracking
+        pages_content = []
+        if hasattr(result.document, 'pages'):
+            for page_num, page in enumerate(result.document.pages, 1):
+                page_text = page.export_to_markdown() if hasattr(page, 'export_to_markdown') else ""
+                pages_content.append({
+                    "page_number": page_num,
+                    "content": page_text
+                })
+        
         metadata = {
             "source": file_path,
             "filename": Path(file_path).name,
             "pages": len(result.document.pages) if hasattr(result.document, 'pages') else 1,
             "title": self._extract_title(text_content),
-            "document_type": "financial_document"
+            "document_type": "financial_document",
+            "pages_content": pages_content  # Add page-wise content
         }
         
         return {

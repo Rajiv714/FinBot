@@ -20,7 +20,8 @@ class TextChunker:
         self.chunk_size = chunk_size if chunk_size is not None else int(os.getenv("CHUNK_SIZE", "1000"))
         self.overlap = overlap if overlap is not None else int(os.getenv("CHUNK_OVERLAP", "200"))
     
-    def chunk_text(self, text: str, chunk_size: Optional[int] = None, overlap: Optional[int] = None) -> List[Dict[str, Any]]:
+    def chunk_text(self, text: str, chunk_size: Optional[int] = None, overlap: Optional[int] = None, 
+                   pages_content: Optional[List[Dict[str, Any]]] = None) -> List[Dict[str, Any]]:
         """
         Split text into overlapping chunks.
         
@@ -28,6 +29,7 @@ class TextChunker:
             text: Text to chunk
             chunk_size: Size of each chunk (overrides instance default if provided)
             overlap: Overlap between chunks (overrides instance default if provided)
+            pages_content: Optional list of page content to track page numbers
             
         Returns:
             List of text chunks with metadata
@@ -42,18 +44,46 @@ class TextChunker:
         chunks = []
         words = text.split()
         
+        # Create page position mapping if pages_content is provided
+        page_mapping = {}
+        if pages_content:
+            current_pos = 0
+            for page_info in pages_content:
+                page_words = page_info["content"].split()
+                for i in range(len(page_words)):
+                    page_mapping[current_pos + i] = page_info["page_number"]
+                current_pos += len(page_words)
+        
         for i in range(0, len(words), effective_chunk_size - effective_overlap):
             chunk_words = words[i:i + effective_chunk_size]
             chunk_text = ' '.join(chunk_words)
             
-            chunks.append({
+            # Determine page number for this chunk
+            page_number = None
+            if page_mapping:
+                # Get the page number of the first word in the chunk
+                page_number = page_mapping.get(i)
+                # If not found, try to find the closest page
+                if page_number is None:
+                    for word_pos in range(i, min(i + effective_chunk_size, len(words))):
+                        if word_pos in page_mapping:
+                            page_number = page_mapping[word_pos]
+                            break
+            
+            chunk_data = {
                 "text": chunk_text,
                 "chunk_id": len(chunks),
                 "start_word": i,
                 "end_word": min(i + effective_chunk_size, len(words)),
                 "chunk_size": len(chunk_words),
                 "overlap_size": effective_overlap if i > 0 else 0
-            })
+            }
+            
+            # Add page number if available
+            if page_number:
+                chunk_data["page_number"] = page_number
+            
+            chunks.append(chunk_data)
         
         return chunks
     
