@@ -32,8 +32,8 @@ class RAGPipeline:
         embedding_dim = self.embedding_service.get_embedding_dimension()
         self.vector_db = create_qdrant_client(vector_size=embedding_dim)
         
-        # Initialize Gemini LLM service
-        self.llm_service = create_gemini_service()
+        # Initialize Gemini LLM service for chat (shorter, faster responses)
+        self.llm_service = create_gemini_service(use_case="chat")
     
     def _get_retrieval_params(self, top_k: Optional[int], score_threshold: Optional[float]) -> tuple:
         """Get retrieval parameters with fallback to defaults."""
@@ -56,18 +56,40 @@ class RAGPipeline:
             score_threshold=score_threshold
         )
         
+        # DEBUG: Log retrieval stats
+        print(f"\n{'='*60}")
+        print(f"DEBUG RETRIEVAL STATS:")
+        print(f"  Query: {query[:100]}...")
+        print(f"  Chunks retrieved: {len(search_results)}")
+        print(f"  Top-k requested: {top_k}")
+        print(f"  Score threshold: {score_threshold}")
+        
         # Format context and sources
         if search_results:
             context_parts = []
-            for result in search_results:
-                context_parts.append(result["text"])
+            total_context_chars = 0
+            
+            for i, result in enumerate(search_results):
+                chunk_text = result["text"]
+                context_parts.append(chunk_text)
+                total_context_chars += len(chunk_text)
+                
+                print(f"  Chunk {i+1}: {len(chunk_text)} chars, score: {result['score']:.3f}")
+                
                 sources.append({
-                    "text": result["text"][:500] + "..." if len(result["text"]) > 500 else result["text"],
+                    "text": chunk_text[:500] + "..." if len(chunk_text) > 500 else chunk_text,
                     "score": result["score"],
                     "metadata": result["metadata"]
                 })
             
             context = "\n\n".join(context_parts)
+            
+            print(f"  Total context chars: {total_context_chars}")
+            print(f"  Total context words: ~{total_context_chars // 5}")
+            print(f"{'='*60}\n")
+        else:
+            print(f"  No chunks found!")
+            print(f"{'='*60}\n")
         
         return context, sources
     
@@ -101,9 +123,9 @@ class RAGPipeline:
             if include_context:
                 context, sources = self._retrieve_context(question, effective_top_k, effective_score_threshold)
             
-            # Generate response using LLM
+            # Generate response using LLM (use query/context interface, not prompt)
             answer = self.llm_service.generate_response(
-                prompt=question,
+                query=question,
                 context=context if context else None,
                 **kwargs
             )
@@ -134,6 +156,7 @@ class RAGPipeline:
     ) -> Dict[str, Any]:
         """
         Process a chat conversation using RAG.
+        NO HISTORY SENT TO LLM - Only current question to save tokens.
         
         Args:
             messages: List of chat messages
@@ -162,24 +185,20 @@ class RAGPipeline:
                     "context_used": False
                 }
             
-            sources = []
-            enhanced_messages = messages.copy()
-            
-            if include_context:
-                context, sources = self._retrieve_context(last_message, effective_top_k, effective_score_threshold)
-                
-                # Add context to the conversation if we found relevant documents
-                if context:
-                    # Insert context before the last user message
-                    enhanced_messages[-1]["content"] = f"Context from financial documents:\n{context}\n\nQuestion: {last_message}"
-            
-            # Generate response using chat format
-            answer = self.llm_service.chat(enhanced_messages, **kwargs)
+            # SIMPLIFIED: Just use the query method instead of sending full history
+            # This saves tokens by not sending conversation history to Gemini
+            result = self.query(
+                question=last_message,
+                top_k=effective_top_k,
+                score_threshold=effective_score_threshold,
+                include_context=include_context,
+                **kwargs
+            )
             
             return {
-                "answer": answer,
-                "sources": sources,
-                "context_used": bool(sources),
+                "answer": result.get("answer", ""),
+                "sources": result.get("sources", []),
+                "context_used": result.get("context_used", False),
                 "messages": messages
             }
             

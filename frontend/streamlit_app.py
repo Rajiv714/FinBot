@@ -366,19 +366,25 @@ def show_chatbot_page(lang_code: str):
     # Display chat history
     for question, answer in st.session_state.chat_history:
         with st.chat_message("user"):
-            st.markdown(question)
-        with st.chat_message("assistant"):
-            st.markdown(answer)
+            st.markdown(f"**{question}**")
+        with st.chat_message("assistant", avatar="🤖"):
+            # Format answer with better styling
+            st.markdown(
+                f"""<div style="background-color: #f0f2f6; padding: 15px; border-radius: 10px; border-left: 4px solid #4CAF50;">
+                {answer}
+                </div>""",
+                unsafe_allow_html=True
+            )
     
     # Chat input
     input_placeholder = translate_text("Ask your financial question...", lang_code)
     if prompt := st.chat_input(input_placeholder):
         # Add user message
         with st.chat_message("user"):
-            st.markdown(prompt)
+            st.markdown(f"**{prompt}**")
         
         # Generate response
-        with st.chat_message("assistant"):
+        with st.chat_message("assistant", avatar="🤖"):
             spinner_text = translate_text("Searching knowledge base...", lang_code)
             with st.spinner(spinner_text):
                 import asyncio
@@ -392,21 +398,29 @@ def show_chatbot_page(lang_code: str):
                     # Translate answer back to selected language
                     translated_answer = translate_text(answer, lang_code)
                     
-                    st.markdown(translated_answer)
+                    # Format answer with better styling
+                    st.markdown(
+                        f"""<div style="background-color: #f0f2f6; padding: 15px; border-radius: 10px; border-left: 4px solid #4CAF50;">
+                        {translated_answer}
+                        </div>""",
+                        unsafe_allow_html=True
+                    )
+                    
                     st.session_state.chat_history.append((prompt, translated_answer))
                     
-                    # Show sources
+                    # Show sources in a cleaner format
                     if response.get("sources"):
-                        sources_label = translate_text("View Sources", lang_code)
-                        with st.expander(sources_label):
+                        st.markdown("<br>", unsafe_allow_html=True)
+                        sources_label = translate_text("📚 Sources", lang_code)
+                        with st.expander(sources_label, expanded=False):
                             for i, source in enumerate(response["sources"][:3], 1):
-                                st.markdown(f"**{translate_text('Source', lang_code)} {i}** ({translate_text('Score', lang_code)}: {source['score']:.3f})")
-                                st.markdown(f"📄 {source.get('metadata', {}).get('filename', 'Unknown')}")
-                                st.markdown(f"{source['text'][:200]}...")
-                                st.markdown("---")
+                                st.markdown(f"**{translate_text('Source', lang_code)} {i}** • 📄 *{source.get('metadata', {}).get('filename', 'Unknown')}* • ✓ {source['score']:.0%}")
+                                st.caption(f"{source['text'][:150]}...")
+                                if i < len(response["sources"][:3]):
+                                    st.divider()
                     
                 except Exception as e:
-                    error_msg = translate_text(f"Error: {str(e)}", lang_code)
+                    error_msg = translate_text(f"❌ Error: {str(e)}", lang_code)
                     st.error(error_msg)
                     st.session_state.chat_history.append((prompt, error_msg))
     

@@ -37,11 +37,36 @@ fi
 # Check Qdrant status
 echo ""
 echo "Checking Qdrant connection..."
-python -c "from qdrant_client import QdrantClient; client = QdrantClient(host='localhost', port=6333); print('Qdrant: Connected')" 2>/dev/null
-if [ $? -ne 0 ]; then
-    echo "WARNING: Cannot connect to Qdrant on localhost:6333"
-    echo "Make sure Qdrant is running with:"
-    echo "  docker run -p 6333:6333 qdrant/qdrant"
+if python -c "
+from qdrant_client import QdrantClient
+import sys
+try:
+    client = QdrantClient(host='localhost', port=6333, timeout=2)
+    collections = client.get_collections()
+    print('✓ Qdrant: Connected (Port 6333)')
+    sys.exit(0)
+except Exception as e:
+    print('✗ Qdrant: NOT RUNNING')
+    print('  Error:', str(e))
+    print('')
+    print('  Start Qdrant with:')
+    print('    docker run -d -p 6333:6333 -p 6334:6334 qdrant/qdrant')
+    print('')
+    print('  Or check if container exists:')
+    print('    docker ps -a | grep qdrant')
+    sys.exit(1)
+" 2>&1; then
+    echo ""
+else
+    echo ""
+    echo "❌ QDRANT IS NOT RUNNING - Backend will fail!"
+    echo ""
+    read -p "Do you want to continue anyway? (y/N) " -n 1 -r
+    echo ""
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        echo "Exiting..."
+        exit 1
+    fi
 fi
 
 # Start the backend

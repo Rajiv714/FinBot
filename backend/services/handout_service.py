@@ -31,7 +31,8 @@ class HandoutService:
         print("Initializing Handout Service...")
         
         # Initialize core services
-        self.gemini_service = create_gemini_service()
+        # Use "handout" use_case for longer output (2048 tokens)
+        self.gemini_service = create_gemini_service(use_case="handout")
         embedding_service = create_embedding_service()
         embedding_dim = embedding_service.get_embedding_dimension()
         self.vector_store = create_qdrant_client(vector_size=embedding_dim)
