@@ -31,136 +31,90 @@ class HandoutGeneratorAgent(BaseAgent):
         analysis_word_count = len(analysis_text.split()) if analysis_text else 0
         input_word_count = extracted_word_count + analysis_word_count
         
+        # Handle google_content which might be structured differently
+        google_text = ""
+        if isinstance(google_content, dict):
+            # Extract relevant text from google content structure
+            categorized = google_content.get('categorized_content', {})
+            for category, items in categorized.items():
+                if items and isinstance(items, list):
+                    for item in items[:2]:  # Top 2 from each category
+                        if isinstance(item, dict):
+                            google_text += item.get('content', '') + "\n"
+        
         generation_prompt = f"""
-        You are a technical documentation specialist creating a comprehensive handout for '{topic}'.
+        You are a financial education specialist creating a concise, educational handout for '{topic}'.
         
-        You have access to:
-        - {extracted_word_count} words of extracted technical content
-        - {analysis_word_count} words of detailed analysis
-        - {len(enhancement_suggestions)} specific enhancement opportunities
-        - {len(content_gaps)} identified content gaps to address
-        - {len(recommended_sections)} additional sections to include
+        TARGET: {target_length} words (1000-1200 words range)
         
-        CONTENT INPUTS:
+        AVAILABLE CONTENT:
         
-        1. EXTRACTED TECHNICAL CONTENT:
-        {extracted_content[:4000]}...
+        1. KNOWLEDGE BASE CONTENT ({extracted_word_count} words):
+        {extracted_content[:3000]}
         
-        2. ANALYSIS INSIGHTS:
-        {analysis_text[:2000]}...
+        2. LATEST INFORMATION & NEWS:
+        {google_text[:1500] if google_text else "No external search results available"}
         
-        3. ENHANCEMENT OPPORTUNITIES:
-        {chr(10).join([f"- {enh.get('enhancement_description', str(enh)) if isinstance(enh, dict) else str(enh)}" for enh in enhancement_suggestions[:10]])}
+        CREATE A WELL-STRUCTURED EDUCATIONAL HANDOUT with the following structure:
         
-        4. CONTENT GAPS TO ADDRESS:
-        {chr(10).join([f"- {gap.get('gap_description', str(gap)) if isinstance(gap, dict) else str(gap)}" for gap in content_gaps[:10]])}
+        # {topic.title() if topic else 'Topic'} - Financial Education Handout
         
-        5. RECOMMENDED ADDITIONAL SECTIONS:
-        {chr(10).join([f"- {section}" for section in recommended_sections[:5]])}
+        ## 1. Introduction & Overview (180-200 words)
+        - Clear definition and explanation of {topic}
+        - Why this topic is important for financial literacy
+        - What readers will learn from this handout
+        - Brief context about current relevance (include latest news if available)
         
-        CREATE A COMPREHENSIVE HANDOUT with the following structure and requirements:
+        ## 2. Key Concepts & Fundamentals (250-280 words)
+        - Essential terminology and definitions
+        - Core principles and how it works
+        - Important characteristics or features
+        - Common types or categories (if applicable)
+        - Basic mechanics explained simply
         
-        # {topic.title() if topic else 'Topic'} - Comprehensive Technical Handout
+        ## 3. Practical Applications & Examples (250-280 words)
+        - Real-world use cases and scenarios
+        - Specific examples that illustrate the concepts
+        - Who benefits and how
+        - Typical situations where this applies
+        - Step-by-step example if applicable
         
-        ## 1. Executive Summary & Learning Objectives (600+ words)
-        - Purpose, scope, and importance of the topic
-        - Clear learning objectives and outcomes
-        - Overview of key concepts covered
-        - Target audience and prerequisites
-        - Key benefits and value proposition
+        ## 4. Important Considerations & Best Practices (200-220 words)
+        - Key factors to consider
+        - Potential risks and limitations
+        - Common mistakes to avoid
+        - Best practices and guidelines
+        - Tips for success
+        - When to seek professional advice
         
-        ## 2. Fundamental Concepts & Theoretical Foundation (1200+ words)
-        - Core definitions and terminology with detailed explanations
-        - Underlying scientific/engineering principles
-        - Historical development and evolution
-        - Relationship to broader field/industry context
-        - Mathematical and scientific foundations
-        - Key theories and models
+        ## 5. Getting Started & Resources (150-170 words)
+        - Actionable next steps for readers
+        - How to begin or implement
+        - Recommended resources for learning more
+        - Professional organizations or certifications
+        - Where to get help or guidance
         
-        ## 3. Technical Specifications & Standards (1400+ words)
-        - Detailed technical parameters and measurements
-        - Performance characteristics and capabilities
-        - Industry standards and regulatory requirements
-        - Equipment specifications and configurations
-        - Compliance requirements and certifications
-        - Quality assurance and testing procedures
+        WRITING GUIDELINES:
+        - Use clear, accessible language for general audience
+        - Balance educational value with readability
+        - Include specific numbers, dates, or data points when available
+        - Use real examples to illustrate concepts
+        - Incorporate latest news or trends from google search results
+        - Maintain professional but friendly tone
+        - Use bullet points and lists for clarity
+        - Avoid excessive jargon; explain technical terms
+        - Focus on practical, actionable information
+        - Keep paragraphs concise (3-5 sentences)
         
-        ## 4. Operational Procedures & Implementation (1600+ words)
-        - Step-by-step operational processes with detailed instructions
-        - Setup, configuration, and commissioning procedures
-        - Standard operating procedures (SOPs)
-        - Quality control and verification methods
-        - Performance monitoring and optimization
-        - Integration with existing systems
+        WORD COUNT TARGETS:
+        - Section 1: ~190 words
+        - Section 2: ~265 words  
+        - Section 3: ~265 words
+        - Section 4: ~210 words
+        - Section 5: ~160 words
+        - Total: ~1090-1190 words
         
-        ## 5. Safety Protocols & Risk Management (900+ words)
-        - Comprehensive safety guidelines and procedures
-        - Risk assessment and hazard identification
-        - Personal protective equipment (PPE) requirements
-        - Emergency response procedures
-        - Regulatory compliance and safety standards
-        - Incident reporting and investigation
-        
-        ## 6. Maintenance & Troubleshooting Guide (1100+ words)
-        - Preventive maintenance schedules and procedures
-        - Common problems, symptoms, and root causes
-        - Diagnostic procedures and tools
-        - Step-by-step troubleshooting methodologies
-        - Corrective actions and solutions
-        - Maintenance cost analysis and optimization
-        
-        ## 7. Case Studies & Real-World Applications (1000+ words)
-        - Industry implementation examples and success stories
-        - Comparative analysis of different approaches
-        - Lessons learned and best practices
-        - Performance benchmarks and metrics
-        - Economic and environmental considerations
-        - ROI analysis and business cases
-        
-        ## 8. Advanced Topics & Future Developments (800+ words)
-        - Emerging technologies and innovations
-        - Advanced operational techniques
-        - Research and development trends
-        - Future market projections and opportunities
-        - Integration with other technologies
-        - Technology roadmaps and evolution
-        
-        ## 9. Regulatory Compliance & Documentation (600+ words)
-        - Applicable regulations and standards
-        - Documentation requirements
-        - Audit and inspection procedures
-        - Record keeping and reporting
-        - Certification processes
-        - Legal and compliance considerations
-        
-        ## 10. Additional Resources & References (500+ words)
-        - Professional organizations and associations
-        - Technical standards and guidelines
-        - Training and certification programs
-        - Recommended reading and resources
-        - Contact information for experts and vendors
-        - Online resources and databases
-        
-        QUALITY REQUIREMENTS:
-        - Minimum 9000 words total across all sections
-        - Each section must meet or exceed its minimum word count
-        - Include specific technical data, numbers, and measurements
-        - Provide detailed step-by-step procedures with examples
-        - Include real-world examples and practical applications
-        - Maintain professional technical writing style with clear explanations
-        - Address ALL identified gaps and enhancement opportunities
-        - Incorporate ALL recommended additional content
-        - Use bullet points, numbered lists, and subheadings for clarity
-        - Include technical specifications, standards, and best practices
-        
-        CONTENT DEPTH REQUIREMENTS:
-        - Each major point should be expanded with detailed explanations
-        - Include practical examples and case studies where applicable
-        - Provide implementation guidance and actionable steps
-        - Add technical context and background information
-        - Include performance metrics, benchmarks, and evaluation criteria
-        
-        Generate the most comprehensive, detailed, and practical handout possible using all available information.
+        Generate a well-structured, informative, and engaging handout that provides real value to readers learning about {topic}.
         """
         
         handout_content = self.api_client.generate_response(generation_prompt)

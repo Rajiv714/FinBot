@@ -56,7 +56,11 @@ class GeminiLLMService:
                 return "I couldn't generate a response. Please try rephrasing your question."
                 
         except Exception as e:
-            return "I'm experiencing technical difficulties. Please try again in a moment."
+            # Log the actual error for debugging
+            print(f"ERROR in Gemini LLM: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            return f"I'm experiencing technical difficulties: {str(e)}"
     
     def _build_prompt(self, query: str, context: Optional[str] = None) -> str:
         """Build optimized prompt for financial queries."""

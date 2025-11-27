@@ -14,52 +14,38 @@ class ContentExtractorAgent(BaseAgent):
         # Enhanced content extraction with multiple search strategies
         extraction_results = self._extract_comprehensive_content(topic)
         
-        # Enhanced content extraction prompt
+        # Simplified content extraction prompt for 1000-1200 word handouts
         extraction_prompt = f"""
-        You are a technical content extraction specialist. Extract comprehensive information about '{topic}' from the provided documents.
+        You are a content extraction specialist. Extract relevant information about '{topic}' from the provided documents.
         
-        Categorize the extracted content into these detailed sections:
+        Organize the extracted content into these sections:
         
-        ## 1. CORE CONCEPTS & DEFINITIONS (Target: 400+ words)
-        - Fundamental definitions and terminology
-        - Basic principles and underlying theory
-        - Historical development and evolution
-        - Key characteristics and properties
+        ## 1. CORE CONCEPTS & DEFINITIONS (150-200 words)
+        - Key definitions and terminology
+        - Basic principles and fundamentals
+        - What it is and why it matters
         
-        ## 2. TECHNICAL SPECIFICATIONS & PARAMETERS (Target: 500+ words)
-        - Detailed technical parameters and measurements
-        - Performance characteristics and specifications
-        - Industry standards and regulatory requirements
-        - Equipment specifications and capabilities
+        ## 2. PRACTICAL INFORMATION (200-250 words)
+        - How it works in practice
+        - Real-world applications and examples
+        - Key features or characteristics
+        - Common types or categories
         
-        ## 3. OPERATIONAL PROCEDURES & BEST PRACTICES (Target: 600+ words)
-        - Step-by-step operational processes
-        - Setup and configuration procedures
-        - Maintenance and calibration requirements
-        - Industry best practices and guidelines
+        ## 3. IMPORTANT CONSIDERATIONS (150-200 words)
+        - Benefits and advantages
+        - Risks and limitations
+        - Best practices
+        - Common mistakes to avoid
         
-        ## 4. SAFETY GUIDELINES & PRECAUTIONS (Target: 400+ words)
-        - Safety protocols and procedures
-        - Risk assessment and management
-        - Emergency response procedures
-        - Compliance and regulatory requirements
-        
-        ## 5. COMMON ISSUES & TROUBLESHOOTING (Target: 500+ words)
-        - Frequent problems and their symptoms
-        - Diagnostic procedures and methods
-        - Solution methodologies and fixes
-        - Preventive measures and maintenance
-        
-        ## 6. REAL-WORLD EXAMPLES & CASE STUDIES (Target: 400+ words)
-        - Industry applications and use cases
-        - Success stories and implementations
-        - Lessons learned and best practices
-        - Comparative analysis and benchmarks
+        ## 4. ACTIONABLE INSIGHTS (100-150 words)
+        - Getting started steps
+        - Tips for success
+        - Resources and next steps
         
         Documents context: {extraction_results['combined_context'][:4000]}
         
-        Generate comprehensive, technical content with specific details, numbers, procedures, and examples.
-        Minimum target: 2800 words total across all sections.
+        Extract clear, relevant information focusing on practical value for learners.
+        Target: 600-800 words total extraction.
         """
         
         extracted_content = self.api_client.generate_response(extraction_prompt)
@@ -77,56 +63,42 @@ class ContentExtractorAgent(BaseAgent):
         )
     
     def _extract_comprehensive_content(self, topic: str) -> Dict[str, Any]:
-        """Extract content using multiple search strategies"""
+        """Extract content using 2 focused search strategies (optimized for 1000-1200 words)"""
         
-        # Strategy 1: Direct topic search
+        # Strategy 1: Direct topic search (main content)
         topic_embedding = self.model.encode([topic])[0]
         direct_chunks = self.vector_store.search(
-            query_embedding=topic_embedding, limit=10
+            query_embedding=topic_embedding, limit=15
         )
         
-        # Strategy 2: Technical aspects search
-        technical_query = f"{topic} technical specifications parameters standards"
-        technical_embedding = self.model.encode([technical_query])[0]
-        technical_chunks = self.vector_store.search(
-            query_embedding=technical_embedding, limit=8
+        # Strategy 2: Practical applications and examples
+        practical_query = f"{topic} examples applications how to use practical guide"
+        practical_embedding = self.model.encode([practical_query])[0]
+        practical_chunks = self.vector_store.search(
+            query_embedding=practical_embedding, limit=10
         )
         
-        # Strategy 3: Application and case studies search
-        application_query = f"{topic} applications case studies real world examples industry"
-        application_embedding = self.model.encode([application_query])[0]
-        application_chunks = self.vector_store.search(
-            query_embedding=application_embedding, limit=8
-        )
+        # Combine contexts (remove duplicates by checking similarity)
+        seen_texts = set()
+        all_chunks = []
         
-        # Strategy 4: Safety and troubleshooting search
-        safety_query = f"{topic} safety procedures troubleshooting maintenance issues"
-        safety_embedding = self.model.encode([safety_query])[0]
-        safety_chunks = self.vector_store.search(
-            query_embedding=safety_embedding, limit=8
-        )
+        for chunk in direct_chunks + practical_chunks:
+            # Use first 100 chars as rough duplicate check
+            chunk_signature = chunk.get("text", "")[:100]
+            if chunk_signature not in seen_texts:
+                seen_texts.add(chunk_signature)
+                all_chunks.append(chunk)
         
-        # Strategy 5: Best practices and standards search
-        standards_query = f"{topic} best practices industry standards guidelines protocols"
-        standards_embedding = self.model.encode([standards_query])[0]
-        standards_chunks = self.vector_store.search(
-            query_embedding=standards_embedding, limit=8
-        )
-        
-        # Combine all contexts
-        all_chunks = direct_chunks + technical_chunks + application_chunks + safety_chunks + standards_chunks
-        combined_context = "\n".join([doc.get("text", "") for doc in all_chunks])
+        combined_context = "\n\n".join([doc.get("text", "") for doc in all_chunks])
         
         return {
             'combined_context': combined_context,
             'total_sources': len(all_chunks),
-            'strategies_used': ['direct_search', 'technical_search', 'application_search', 'safety_search', 'standards_search'],
+            'strategies_used': ['direct_search', 'practical_search'],
             'chunk_counts': {
                 'direct': len(direct_chunks),
-                'technical': len(technical_chunks),
-                'application': len(application_chunks),
-                'safety': len(safety_chunks),
-                'standards': len(standards_chunks)
+                'practical': len(practical_chunks),
+                'unique': len(all_chunks)
             }
         }
     
