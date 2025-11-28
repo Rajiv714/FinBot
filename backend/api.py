@@ -318,6 +318,90 @@ async def health_check() -> Dict[str, str]:
 
 
 # ============================================================================
+# Integration Endpoints (News & YouTube)
+# ============================================================================
+
+@app.get("/api/integrations/news", tags=["Integrations"])
+async def get_news(query: str, max_results: int = 5) -> Dict[str, Any]:
+    """
+    Fetch top news articles related to a financial topic.
+    
+    Args:
+        query: Search query (e.g., "personal finance", "mutual funds")
+        max_results: Maximum number of results (default: 5)
+        
+    Returns:
+        Dictionary with news articles
+    """
+    try:
+        import sys
+        from pathlib import Path
+        src_path = str(Path(__file__).parent.parent / "src")
+        if src_path not in sys.path:
+            sys.path.insert(0, src_path)
+        
+        from integrations.serp_news import fetch_news
+        
+        news_results = fetch_news(query, max_results)
+        
+        return {
+            "success": True,
+            "query": query,
+            "count": len(news_results),
+            "results": news_results
+        }
+        
+    except Exception as e:
+        return {
+            "success": False,
+            "query": query,
+            "count": 0,
+            "results": [],
+            "error": str(e)
+        }
+
+
+@app.get("/api/integrations/youtube", tags=["Integrations"])
+async def get_youtube_videos(query: str, max_results: int = 5) -> Dict[str, Any]:
+    """
+    Fetch top YouTube videos related to a financial topic.
+    
+    Args:
+        query: Search query (e.g., "personal finance", "mutual funds")
+        max_results: Maximum number of results (default: 5)
+        
+    Returns:
+        Dictionary with YouTube videos
+    """
+    try:
+        import sys
+        from pathlib import Path
+        src_path = str(Path(__file__).parent.parent / "src")
+        if src_path not in sys.path:
+            sys.path.insert(0, src_path)
+        
+        from integrations.serp_youtube import fetch_youtube_videos
+        
+        video_results = fetch_youtube_videos(query, max_results)
+        
+        return {
+            "success": True,
+            "query": query,
+            "count": len(video_results),
+            "results": video_results
+        }
+        
+    except Exception as e:
+        return {
+            "success": False,
+            "query": query,
+            "count": 0,
+            "results": [],
+            "error": str(e)
+        }
+
+
+# ============================================================================
 # Root Endpoint
 # ============================================================================
 

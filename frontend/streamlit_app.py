@@ -273,6 +273,26 @@ async def api_get_status() -> Dict[str, Any]:
         return response.json()
 
 
+async def api_get_news(query: str, max_results: int = 5) -> Dict[str, Any]:
+    """Get news articles related to query"""
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        response = await client.get(
+            f"{BACKEND_URL}/api/integrations/news",
+            params={"query": query, "max_results": max_results}
+        )
+        return response.json()
+
+
+async def api_get_youtube_videos(query: str, max_results: int = 5) -> Dict[str, Any]:
+    """Get YouTube videos related to query"""
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        response = await client.get(
+            f"{BACKEND_URL}/api/integrations/youtube",
+            params={"query": query, "max_results": max_results}
+        )
+        return response.json()
+
+
 # ============================================================================
 # Main Application
 # ============================================================================
@@ -356,7 +376,7 @@ def show_home_page(lang_code: str):
 
 
 def show_chatbot_page(lang_code: str):
-    """Display chatbot interface"""
+    """Display chatbot interface with News & YouTube sidebar"""
     
     # Back button
     if st.button(get_ui_text('back_home', lang_code)):
@@ -369,70 +389,128 @@ def show_chatbot_page(lang_code: str):
     st.markdown(f"## {chatbot_title}")
     st.markdown(chatbot_desc)
     
-    # Initialize chat history
-    if 'chat_history' not in st.session_state:
-        st.session_state.chat_history = []
+    # Create main layout: Chat (left) and Integrations (right)
+    chat_col, integrations_col = st.columns([2, 1])
     
-    # Display chat history
-    for question, answer in st.session_state.chat_history:
-        with st.chat_message("user"):
-            st.markdown(f"**{question}**")
-        with st.chat_message("assistant", avatar="🤖"):
-            # Format answer with better styling
-            st.markdown(
-                f"""<div style="background-color: #f0f2f6; padding: 15px; border-radius: 10px; border-left: 4px solid #4CAF50;">
-                {answer}
-                </div>""",
-                unsafe_allow_html=True
-            )
-    
-    # Chat input
-    input_placeholder = translate_text("Ask your financial question...", lang_code)
-    if prompt := st.chat_input(input_placeholder):
-        # Add user message
-        with st.chat_message("user"):
-            st.markdown(f"**{prompt}**")
+    with chat_col:
+        # Initialize chat history
+        if 'chat_history' not in st.session_state:
+            st.session_state.chat_history = []
         
-        # Generate response
-        with st.chat_message("assistant", avatar="🤖"):
-            spinner_text = translate_text("Searching knowledge base...", lang_code)
-            with st.spinner(spinner_text):
+        # Display chat history
+        for question, answer in st.session_state.chat_history:
+            with st.chat_message("user"):
+                st.markdown(f"**{question}**")
+            with st.chat_message("assistant", avatar="🤖"):
+                # Format answer with better styling
+                st.markdown(
+                    f"""<div style="background-color: #f0f2f6; padding: 15px; border-radius: 10px; border-left: 4px solid #4CAF50;">
+                    {answer}
+                    </div>""",
+                    unsafe_allow_html=True
+                )
+        
+        # Chat input
+        input_placeholder = translate_text("Ask your financial question...", lang_code)
+        if prompt := st.chat_input(input_placeholder):
+            # Add user message
+            with st.chat_message("user"):
+                st.markdown(f"**{prompt}**")
+            
+            # Generate response
+            with st.chat_message("assistant", avatar="🤖"):
+                spinner_text = translate_text("Searching knowledge base...", lang_code)
+                with st.spinner(spinner_text):
+                    import asyncio
+                    try:
+                        # Translate question to English for API
+                        english_prompt = translate_text(prompt, "en") if lang_code != "en" else prompt
+                        
+                        response = asyncio.run(api_chat(english_prompt))
+                        answer = response.get("answer", "No response")
+                        
+                        # Translate answer back to selected language
+                        translated_answer = translate_text(answer, lang_code)
+                        
+                        # Format answer with better styling
+                        st.markdown(
+                            f"""<div style="background-color: #f0f2f6; padding: 15px; border-radius: 10px; border-left: 4px solid #4CAF50;">
+                            {translated_answer}
+                            </div>""",
+                            unsafe_allow_html=True
+                        )
+                        
+                        st.session_state.chat_history.append((prompt, translated_answer))
+                        
+                        # Store current query for integrations
+                        st.session_state.current_query = english_prompt
+                        
+                        # Show sources in a cleaner format
+                        if response.get("sources"):
+                            st.markdown("<br>", unsafe_allow_html=True)
+                            sources_label = translate_text("📚 Sources", lang_code)
+                            with st.expander(sources_label, expanded=False):
+                                for i, source in enumerate(response["sources"][:3], 1):
+                                    st.markdown(f"**{translate_text('Source', lang_code)} {i}** • 📄 *{source.get('metadata', {}).get('filename', 'Unknown')}* • ✓ {source['score']:.0%}")
+                                    st.caption(f"{source['text'][:150]}...")
+                                    if i < len(response["sources"][:3]):
+                                        st.divider()
+                        
+                        # Trigger rerun to update integrations sidebar
+                        st.rerun()
+                        
+                    except Exception as e:
+                        error_msg = translate_text(f"❌ Error: {str(e)}", lang_code)
+                        st.error(error_msg)
+                        st.session_state.chat_history.append((prompt, error_msg))
+    
+    # Right sidebar: News & YouTube integrations
+    with integrations_col:
+        if 'current_query' in st.session_state and st.session_state.current_query:
+            query = st.session_state.current_query
+            
+            # YouTube Videos Section
+            st.markdown("### 📺 Related Videos")
+            with st.spinner("Loading videos..."):
                 import asyncio
                 try:
-                    # Translate question to English for API
-                    english_prompt = translate_text(prompt, "en") if lang_code != "en" else prompt
-                    
-                    response = asyncio.run(api_chat(english_prompt))
-                    answer = response.get("answer", "No response")
-                    
-                    # Translate answer back to selected language
-                    translated_answer = translate_text(answer, lang_code)
-                    
-                    # Format answer with better styling
-                    st.markdown(
-                        f"""<div style="background-color: #f0f2f6; padding: 15px; border-radius: 10px; border-left: 4px solid #4CAF50;">
-                        {translated_answer}
-                        </div>""",
-                        unsafe_allow_html=True
-                    )
-                    
-                    st.session_state.chat_history.append((prompt, translated_answer))
-                    
-                    # Show sources in a cleaner format
-                    if response.get("sources"):
-                        st.markdown("<br>", unsafe_allow_html=True)
-                        sources_label = translate_text("📚 Sources", lang_code)
-                        with st.expander(sources_label, expanded=False):
-                            for i, source in enumerate(response["sources"][:3], 1):
-                                st.markdown(f"**{translate_text('Source', lang_code)} {i}** • 📄 *{source.get('metadata', {}).get('filename', 'Unknown')}* • ✓ {source['score']:.0%}")
-                                st.caption(f"{source['text'][:150]}...")
-                                if i < len(response["sources"][:3]):
-                                    st.divider()
-                    
+                    videos = asyncio.run(api_get_youtube_videos(query))
+                    if videos.get("success") and videos.get("results"):
+                        # Compact list of links (no thumbnails) to save space
+                        for video in videos["results"][:5]:
+                            title = video.get('title', '').strip()
+                            link = video.get('link', '')
+                            channel = video.get('channel', 'Unknown')
+                            duration = video.get('duration', 'N/A')
+                            # Single-line list entry with small metadata
+                            st.markdown(f"- [{title}]({link})  \n  📺 {channel} • ⏱️ {duration}")
+                    else:
+                        st.info("No videos found")
                 except Exception as e:
-                    error_msg = translate_text(f"❌ Error: {str(e)}", lang_code)
-                    st.error(error_msg)
-                    st.session_state.chat_history.append((prompt, error_msg))
+                    st.error(f"Error loading videos: {str(e)}")
+            
+            st.markdown("---")
+            
+            # News Articles Section
+            st.markdown("### 📰 Latest News")
+            with st.spinner("Loading news..."):
+                import asyncio
+                try:
+                    news = asyncio.run(api_get_news(query))
+                    if news.get("success") and news.get("results"):
+                        # Compact list of article links
+                        for article in news["results"][:5]:
+                            title = article.get('title', '').strip()
+                            link = article.get('link', '')
+                            source = article.get('source', 'Unknown')
+                            date = article.get('date', 'N/A')
+                            st.markdown(f"- [{title}]({link})  \n  📰 {source} • 📅 {date}")
+                    else:
+                        st.info("No news found")
+                except Exception as e:
+                    st.error(f"Error loading news: {str(e)}")
+        else:
+            st.info(translate_text("Ask a question to see related videos and news!", lang_code))
     
     # Clear chat
     clear_button_text = translate_text("Clear Chat History", lang_code)
