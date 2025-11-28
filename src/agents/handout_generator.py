@@ -4,7 +4,6 @@ from typing import Dict, Any, List
 class HandoutGeneratorAgent(BaseAgent):
     def __init__(self, api_client, vector_store):
         super().__init__(api_client, vector_store, "HandoutGenerator")
-        super().__init__(api_client, vector_store, "HandoutGenerator")
         
     def execute(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
         """Generate comprehensive handout content"""

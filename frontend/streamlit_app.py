@@ -320,6 +320,8 @@ def main():
         show_chatbot_page(lang_code)
     elif st.session_state.current_page == "learning_module":
         show_learning_module_page(lang_code)
+    elif st.session_state.current_page == "document_summariser":
+        show_document_summariser_page(lang_code)
 
 
 def show_home_page(lang_code: str):
@@ -327,8 +329,8 @@ def show_home_page(lang_code: str):
     
     st.markdown(f"## {get_ui_text('choose_feature', lang_code)}")
     
-    # Feature cards - only 2 now
-    col1, col2 = st.columns(2)
+    # Feature cards - now 3 features
+    col1, col2, col3 = st.columns(3)
     
     with col1:
         if st.button(get_ui_text('chatbot', lang_code), key="chatbot_card", use_container_width=True):
@@ -342,6 +344,14 @@ def show_home_page(lang_code: str):
             st.session_state.current_page = "learning_module"
             st.rerun()
         caption_text = translate_text("Generate 1000-1200 word educational handouts on financial topics", lang_code)
+        st.caption(caption_text)
+    
+    with col3:
+        summariser_title = translate_text("Document Summariser", lang_code)
+        if st.button(summariser_title, key="summariser_card", use_container_width=True):
+            st.session_state.current_page = "document_summariser"
+            st.rerun()
+        caption_text = translate_text("Analyze financial documents and get simple explanations", lang_code)
         st.caption(caption_text)
 
 
@@ -563,6 +573,119 @@ def show_learning_module_page(lang_code: str):
                 st.error(f"❌ {error_creating}")
                 backend_info = translate_text(f"Make sure the backend server is running at {BACKEND_URL}", lang_code)
                 st.info(f"💡 {backend_info}")
+
+
+def show_document_summariser_page(lang_code: str):
+    """Display document summariser interface"""
+    
+    # Back button
+    if st.button(get_ui_text('back_home', lang_code)):
+        st.session_state.current_page = "home"
+        st.rerun()
+    
+    summariser_title = translate_text("Document Summariser", lang_code)
+    summariser_desc = translate_text("Upload financial documents to get simple explanations and important highlights", lang_code)
+    
+    st.markdown(f"## {summariser_title}")
+    st.markdown(summariser_desc)
+    st.markdown("---")
+    
+    # File upload section
+    col1, col2 = st.columns([1, 1])
+    
+    with col1:
+        st.markdown(f"### {translate_text('Upload Document', lang_code)}")
+        upload_help = translate_text("Upload loan agreements, insurance policies, or any financial document (PDF format)", lang_code)
+        uploaded_file = st.file_uploader(
+            translate_text("Choose a financial document", lang_code),
+            type=["pdf"],
+            help=upload_help
+        )
+        
+        st.markdown(f"### {translate_text('Your Question (Optional)', lang_code)}")
+        query_placeholder = translate_text("Example: What is the interest rate? Are there any hidden charges?", lang_code)
+        query_help = translate_text("Leave blank if you just want a general analysis", lang_code)
+        user_query = st.text_area(
+            translate_text("Do you have any specific questions about this document?", lang_code),
+            placeholder=query_placeholder,
+            help=query_help
+        )
+        
+        analyze_button = st.button(
+            translate_text("Analyze Document", lang_code),
+            type="primary",
+            use_container_width=True
+        )
+    
+    with col2:
+        st.markdown(f"### {translate_text('Analysis Results', lang_code)}")
+        results_container = st.container()
+    
+    # Process document when button is clicked
+    if analyze_button:
+        if not uploaded_file:
+            error_msg = translate_text("Please upload a document first!", lang_code)
+            st.error(f"❌ {error_msg}")
+            return
+        
+        with results_container:
+            with st.spinner(translate_text("Analyzing document...", lang_code)):
+                import asyncio
+                
+                async def analyze_doc():
+                    # Prepare file data
+                    file_data = {
+                        "file": (uploaded_file.name, uploaded_file.getvalue(), "application/pdf")
+                    }
+                    
+                    # Prepare form data
+                    form_data = {}
+                    if user_query and user_query.strip():
+                        form_data["user_query"] = user_query.strip()
+                    
+                    # Call API
+                    async with httpx.AsyncClient(timeout=120.0) as client:
+                        response = await client.post(
+                            f"{BACKEND_URL}/api/summarise",
+                            files=file_data,
+                            data=form_data
+                        )
+                        return response.json()
+                
+                try:
+                    result = asyncio.run(analyze_doc())
+                    
+                    if result.get("success"):
+                        st.success(translate_text("Analysis completed successfully!", lang_code))
+                        
+                        # Display document type
+                        doc_type = result.get("document_type", "Unknown")
+                        st.subheader(f"{translate_text('Document Type', lang_code)}: {translate_text(doc_type, lang_code)}")
+                        st.markdown("---")
+                        
+                        # Display analysis
+                        analysis = result.get("analysis", "")
+                        translated_analysis = translate_text(analysis, lang_code)
+                        st.markdown(translated_analysis)
+                        
+                        # Download button
+                        download_text = f"Document Type: {doc_type}\n\n{'='*60}\n\n{analysis}"
+                        st.download_button(
+                            label=translate_text("Download Analysis", lang_code),
+                            data=download_text,
+                            file_name=f"analysis_{uploaded_file.name}.txt",
+                            mime="text/plain",
+                            use_container_width=True
+                        )
+                    else:
+                        error_msg = result.get("error", "Analysis failed")
+                        st.error(f"❌ {translate_text(error_msg, lang_code)}")
+                    
+                except Exception as e:
+                    error_text = translate_text(f"Error analyzing document: {str(e)}", lang_code)
+                    st.error(f"❌ {error_text}")
+                    backend_info = translate_text(f"Make sure the backend server is running at {BACKEND_URL}", lang_code)
+                    st.info(f"💡 {backend_info}")
 
 
 # ============================================================================

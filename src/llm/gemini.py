@@ -31,11 +31,14 @@ class GeminiLLMService:
         genai.configure(api_key=api_key)
         
         # Safety settings - More permissive for financial education content
+        # Using the correct format for Gemini API
+        from google.generativeai.types import HarmCategory, HarmBlockThreshold
+        
         safety_settings = {
-            "HARASSMENT": "BLOCK_NONE",
-            "HATE_SPEECH": "BLOCK_NONE",
-            "SEXUALLY_EXPLICIT": "BLOCK_NONE",
-            "DANGEROUS_CONTENT": "BLOCK_NONE"
+            HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
+            HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
+            HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
+            HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE
         }
         
         self.model = genai.GenerativeModel(
@@ -172,18 +175,11 @@ def create_gemini_service(
     # Different defaults based on use case
     if max_tokens is None:
         if use_case == "handout":
-            # Handout needs 1200+ words = ~1600 tokens minimum
-            max_tokens = int(os.getenv("MAX_TOKENS_HANDOUT", "2048"))
+            # Handout needs 1200+ words = ~1800 tokens minimum, allow 3000 for safety
+            max_tokens = int(os.getenv("MAX_TOKENS_HANDOUT", "3000"))
         else:
             # Chat needs quick, concise responses
             max_tokens = int(os.getenv("MAX_TOKENS_CHAT", "1024"))
-    
-    return GeminiLLMService(
-        api_key=api_key,
-        model_name=model_name,
-        temperature=temperature,
-        max_tokens=max_tokens
-    )
     
     return GeminiLLMService(
         api_key=api_key,

@@ -4,10 +4,10 @@ Provides REST API endpoints for chatbot, handout generation, and document ingest
 """
 import sys
 from pathlib import Path
-from fastapi import FastAPI, HTTPException, BackgroundTasks
+from fastapi import FastAPI, HTTPException, BackgroundTasks, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 import uvicorn
 
 # Add parent directory to path
@@ -23,13 +23,16 @@ from backend.models.schemas import (
     HandoutResponse,
     IngestionRequest,
     IngestionResponse,
+    SummariserRequest,
+    SummariserResponse,
     SystemStatus,
     ErrorResponse
 )
 from backend.services import (
     get_chatbot_service,
     get_handout_service,
-    get_ingestion_service
+    get_ingestion_service,
+    get_summariser_service
 )
 
 # ============================================================================
@@ -212,6 +215,67 @@ async def ingest_documents(request: IngestionRequest, background_tasks: Backgrou
 
 
 # ============================================================================
+# Document Summariser Endpoints
+# ============================================================================
+
+@app.post("/api/summarise", response_model=SummariserResponse, tags=["Summariser"])
+async def summarise_document(
+    file: UploadFile = File(...),
+    user_query: Optional[str] = Form(default=None)
+) -> SummariserResponse:
+    """
+    Analyze and summarise a financial document.
+    
+    Args:
+        file: Uploaded PDF document
+        user_query: Optional query about the document
+        
+    Returns:
+        SummariserResponse with analysis
+    """
+    try:
+        # Validate file type
+        if not file.filename.lower().endswith('.pdf'):
+            raise HTTPException(
+                status_code=400,
+                detail="Only PDF files are supported"
+            )
+        
+        # Read file content
+        file_content = await file.read()
+        
+        if len(file_content) == 0:
+            raise HTTPException(
+                status_code=400,
+                detail="Uploaded file is empty"
+            )
+        
+        # Get summariser service
+        summariser = get_summariser_service()
+        
+        # Analyze document
+        result = summariser.analyze_document(
+            file_content=file_content,
+            filename=file.filename,
+            user_query=user_query
+        )
+        
+        return SummariserResponse(
+            success=result.get("success", False),
+            document_type=result.get("document_type"),
+            analysis=result.get("analysis"),
+            text_length=result.get("text_length"),
+            filename=result.get("filename"),
+            error=result.get("error")
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================================================
 # System Status Endpoints
 # ============================================================================
 
@@ -271,6 +335,9 @@ async def root():
             },
             "handouts": {
                 "create": "/api/handouts"
+            },
+            "summariser": {
+                "summarise": "/api/summarise"
             },
             "ingestion": {
                 "ingest": "/api/ingest"

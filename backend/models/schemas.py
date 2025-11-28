@@ -130,3 +130,23 @@ class ErrorResponse(BaseModel):
     error: str = Field(..., description="Error message")
     detail: Optional[str] = Field(default=None, description="Detailed error information")
     timestamp: datetime = Field(default_factory=datetime.now, description="Error timestamp")
+
+
+# ============================================================================
+# Document Summariser Schemas
+# ============================================================================
+
+class SummariserRequest(BaseModel):
+    """Request for document summarisation"""
+    user_query: Optional[str] = Field(default=None, description="Optional user query about the document")
+
+
+class SummariserResponse(BaseModel):
+    """Response from document summarisation"""
+    success: bool = Field(..., description="Whether summarisation was successful")
+    document_type: Optional[str] = Field(default=None, description="Type of document detected")
+    analysis: Optional[str] = Field(default=None, description="AI analysis of the document")
+    text_length: Optional[int] = Field(default=None, description="Length of processed text")
+    filename: Optional[str] = Field(default=None, description="Name of the analyzed file")
+    error: Optional[str] = Field(default=None, description="Error message if failed")
+
