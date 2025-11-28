@@ -96,9 +96,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 
-# ============================================================================
 # Translation Functions
-# ============================================================================
 
 def translate_text(text: str, target_language: str) -> str:
     """Translate text to target language"""
@@ -230,9 +228,7 @@ def get_ui_text(key: str, language: str) -> str:
     return ui_texts.get(key, {}).get(language, ui_texts.get(key, {}).get("en", ""))
 
 
-# ============================================================================
 # API Client Functions
-# ============================================================================
 
 async def api_chat(query: str, include_context: bool = True) -> Dict[str, Any]:
     """Call chat API"""
@@ -293,9 +289,7 @@ async def api_get_youtube_videos(query: str, max_results: int = 5) -> Dict[str, 
         return response.json()
 
 
-# ============================================================================
 # Main Application
-# ============================================================================
 
 def main():
     """Main Streamlit application"""
@@ -768,7 +762,5 @@ def show_document_summariser_page(lang_code: str):
 
 # ============================================================================
 # Run Application
-# ============================================================================
-
 if __name__ == "__main__":
     main()

@@ -35,9 +35,7 @@ from backend.services import (
     get_summariser_service
 )
 
-# ============================================================================
 # FastAPI App Configuration
-# ============================================================================
 
 app = FastAPI(
     title="FinBot API",
@@ -55,9 +53,7 @@ app.add_middleware(
 )
 
 
-# ============================================================================
 # Chatbot Endpoints
-# ============================================================================
 
 @app.post("/api/chat", response_model=ChatResponse, tags=["Chatbot"])
 async def chat_query(request: ChatRequest) -> ChatResponse:

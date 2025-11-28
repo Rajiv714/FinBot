@@ -63,54 +63,49 @@ class GeminiLLMService:
                 # New interface: build prompt from query and context
                 final_prompt = self._build_prompt(query, context)
             
-            # Debug: Print prompt details
-            print(f"\n{'='*60}")
-            print(f"DEBUG GEMINI API CALL:")
-            print(f"  Query: {query[:100] if query else 'None'}...")
-            print(f"  Context chars: {len(context) if context else 0}")
-            print(f"  Context words: ~{len(context) // 5 if context else 0}")
-            print(f"  Final prompt chars: {len(final_prompt)}")
-            print(f"  Final prompt words: ~{len(final_prompt) // 5}")
-            print(f"  Estimated tokens: ~{len(final_prompt) // 4}")
-            print(f"{'='*60}\n")
-            
             response = self.model.generate_content(final_prompt, generation_config=self.config)
             
-            # Debug: Print response details
-            print(f"\n{'='*60}")
-            print(f"DEBUG GEMINI RESPONSE:")
-            print(f"  Response candidates: {len(response.candidates)}")
-            if response.candidates:
-                print(f"  Finish reason: {response.candidates[0].finish_reason}")
-                print(f"  Safety ratings: {response.candidates[0].safety_ratings}")
-            print(f"{'='*60}\n")
-            
-            # Check if response has valid text
+            # Check if response has valid text - more robust handling
             try:
+                # First check if we have candidates and they have content
+                if response.candidates and len(response.candidates) > 0:
+                    candidate = response.candidates[0]
+                    
+                    # Check finish reason (1=STOP is normal completion)
+                    if candidate.finish_reason == 1:  # STOP - normal completion
+                        if hasattr(candidate, 'content') and candidate.content:
+                            # Extract text from content parts
+                            if hasattr(candidate.content, 'parts') and candidate.content.parts:
+                                text_parts = []
+                                for part in candidate.content.parts:
+                                    if hasattr(part, 'text') and part.text:
+                                        text_parts.append(part.text)
+                                if text_parts:
+                                    return ' '.join(text_parts).strip()
+                        
+                        # Fallback to response.text if content extraction fails
+                        if hasattr(response, 'text') and response.text:
+                            return response.text.strip()
+                    
+                # If we get here, try the original response.text approach
                 if response.text:
                     return response.text.strip()
+                    
             except ValueError as ve:
                 # Handle blocked/filtered responses (finish_reason=2 or other issues)
                 finish_reason = response.candidates[0].finish_reason if response.candidates else "UNKNOWN"
-                
-                print(f"DEBUG - ValueError caught. Finish reason: {finish_reason}")
-                print(f"DEBUG - Prompt feedback: {response.prompt_feedback}")
                 
                 if "finish_reason" in str(ve) or finish_reason == 2:
                     # Response was blocked by safety filters
                     return "I apologize, but I couldn't generate a response for this query. This might be due to content safety filters. Please try rephrasing your question or asking about a different financial topic."
                 else:
-                    # Other ValueError
-                    return f"I encountered an issue generating a response. Please try again with a different question."
+                    # Other ValueError - try to extract more info
+                    return f"I encountered an issue generating a response. Error: {str(ve)[:100]}. Please try again with a different question."
             
             # If no text and no exception, return generic message
             return "I couldn't generate a response. Please try rephrasing your question."
                 
         except Exception as e:
-            # Log the actual error for debugging
-            print(f"ERROR in Gemini LLM: {str(e)}")
-            import traceback
-            traceback.print_exc()
             return f"I'm experiencing technical difficulties: {str(e)}"
     
     def _build_prompt(self, query: str, context: Optional[str] = None) -> str:

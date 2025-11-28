@@ -82,9 +82,7 @@ class HandoutService:
         try:
             print(f"Starting handout creation for: '{topic}'")
             
-            # ================================================================
-            # PHASE 1: Extract content from vector database
-            # ================================================================
+            # Phase 1: Extract content from vector database
             print("Phase 1: Extracting content from knowledge base...")
             phase1_start = time.time()
             
@@ -105,9 +103,7 @@ class HandoutService:
             print(f"   ✓ Extracted {vector_extraction['word_count']} words from {vector_extraction['source_count']} sources")
             print(f"   Time: {phase1_time:.2f}s")
             
-            # ================================================================
-            # PHASE 2: Google Search for latest information (optional)
-            # ================================================================
+            # Phase 2: Google Search for latest information (optional)
             google_extraction = {'processed_results': [], 'structured_content': {}}
             
             if include_google_search:
@@ -147,9 +143,7 @@ class HandoutService:
             else:
                 print("Phase 2: Google search skipped")
             
-            # ================================================================
-            # PHASE 3: Generate handout (1000-1200 words)
-            # ================================================================
+            # Phase 3: Generate handout (1000-1200 words)
             print(f"Phase 3: Generating {target_length}-word handout...")
             phase3_start = time.time()
             

@@ -113,23 +113,43 @@ class QdrantVectorDB:
         if len(texts) != len(embeddings) or len(texts) != len(metadatas):
             raise ValueError("texts, embeddings, and metadatas must have the same length")
         
-        points = []
-        for i, (text, embedding, metadata, doc_id) in enumerate(zip(texts, embeddings, metadatas, ids)):
-            # Add text to metadata
-            full_metadata = metadata.copy()
-            full_metadata["text"] = text
-            
-            point = PointStruct(
-                id=doc_id,
-                vector=embedding.tolist(),
-                payload=full_metadata
-            )
-            points.append(point)
+        # Process in batches to avoid timeouts with large datasets
+        batch_size = int(os.getenv("QDRANT_BATCH_SIZE", "100"))  # 100 vectors per batch
+        total_batches = (len(texts) + batch_size - 1) // batch_size
         
-        self.client.upsert(
-            collection_name=self.collection_name,
-            points=points
-        )
+        print(f"   Inserting {len(texts)} vectors in {total_batches} batches (size: {batch_size})...")
+        
+        for batch_idx in range(total_batches):
+            start_idx = batch_idx * batch_size
+            end_idx = min((batch_idx + 1) * batch_size, len(texts))
+            
+            # Create batch points
+            batch_points = []
+            for i in range(start_idx, end_idx):
+                text = texts[i]
+                embedding = embeddings[i]
+                metadata = metadatas[i]
+                doc_id = ids[i]
+                
+                # Add text to metadata
+                full_metadata = metadata.copy()
+                full_metadata["text"] = text
+                
+                point = PointStruct(
+                    id=doc_id,
+                    vector=embedding.tolist(),
+                    payload=full_metadata
+                )
+                batch_points.append(point)
+            
+            # Insert batch
+            self.client.upsert(
+                collection_name=self.collection_name,
+                points=batch_points
+            )
+            
+            print(f"   ✓ Batch {batch_idx + 1}/{total_batches} inserted ({len(batch_points)} vectors)")
+        
         return ids
     
     def search(

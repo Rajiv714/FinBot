@@ -6,9 +6,7 @@ from typing import List, Optional, Dict, Any
 from datetime import datetime
 
 
-# ============================================================================
-# CHATBOT SCHEMAS
-# ============================================================================
+# Chatbot Schemas
 
 class ChatMessage(BaseModel):
     """Single chat message"""
@@ -47,9 +45,7 @@ class ChatResponse(BaseModel):
     timestamp: datetime = Field(default_factory=datetime.now, description="Response timestamp")
 
 
-# ============================================================================
-# HANDOUT SCHEMAS
-# ============================================================================
+# Handout Schemas
 
 class HandoutRequest(BaseModel):
     """Request for handout generation"""
@@ -80,9 +76,7 @@ class HandoutResponse(BaseModel):
     success: bool = Field(..., description="Whether generation was successful")
 
 
-# ============================================================================
-# INGESTION SCHEMAS
-# ============================================================================
+# Ingestion Schemas
 
 class IngestionRequest(BaseModel):
     """Request for document ingestion"""
@@ -110,9 +104,7 @@ class IngestionResponse(BaseModel):
     timestamp: datetime = Field(default_factory=datetime.now, description="Ingestion timestamp")
 
 
-# ============================================================================
-# SYSTEM SCHEMAS
-# ============================================================================
+# System Schemas
 
 class SystemStatus(BaseModel):
     """System health and status"""

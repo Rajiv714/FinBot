@@ -56,25 +56,13 @@ class RAGPipeline:
             score_threshold=score_threshold
         )
         
-        # DEBUG: Log retrieval stats
-        print(f"\n{'='*60}")
-        print(f"DEBUG RETRIEVAL STATS:")
-        print(f"  Query: {query[:100]}...")
-        print(f"  Chunks retrieved: {len(search_results)}")
-        print(f"  Top-k requested: {top_k}")
-        print(f"  Score threshold: {score_threshold}")
-        
         # Format context and sources
         if search_results:
             context_parts = []
-            total_context_chars = 0
             
-            for i, result in enumerate(search_results):
+            for result in search_results:
                 chunk_text = result["text"]
                 context_parts.append(chunk_text)
-                total_context_chars += len(chunk_text)
-                
-                print(f"  Chunk {i+1}: {len(chunk_text)} chars, score: {result['score']:.3f}")
                 
                 sources.append({
                     "text": chunk_text[:500] + "..." if len(chunk_text) > 500 else chunk_text,
@@ -83,13 +71,6 @@ class RAGPipeline:
                 })
             
             context = "\n\n".join(context_parts)
-            
-            print(f"  Total context chars: {total_context_chars}")
-            print(f"  Total context words: ~{total_context_chars // 5}")
-            print(f"{'='*60}\n")
-        else:
-            print(f"  No chunks found!")
-            print(f"{'='*60}\n")
         
         return context, sources
     
