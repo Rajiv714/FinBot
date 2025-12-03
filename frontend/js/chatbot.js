@@ -44,18 +44,19 @@ async function sendMessage(message) {
         let queryToSend = userMessage;
         if (selectedLang !== 'en') {
             const languageNames = {
-                'hi': 'Hindi (हिंदी)',
-                'bn': 'Bengali (বাংলা)',
-                'te': 'Telugu (తెలుగు)',
-                'mr': 'Marathi (मराठी)',
-                'ta': 'Tamil (தமிழ்)',
-                'gu': 'Gujarati (ગુજરાતી)',
-                'kn': 'Kannada (ಕನ್ನಡ)',
-                'ml': 'Malayalam (മലയാളം)',
-                'pa': 'Punjabi (ਪੰਜਾਬੀ)'
+                'hi': 'Hindi',
+                'bn': 'Bengali',
+                'te': 'Telugu',
+                'mr': 'Marathi',
+                'ta': 'Tamil',
+                'gu': 'Gujarati',
+                'kn': 'Kannada',
+                'ml': 'Malayalam',
+                'pa': 'Punjabi'
             };
             const languageName = languageNames[selectedLang] || selectedLang;
-            queryToSend = `Please respond in ${languageName} language: ${userMessage}`;
+            // More natural language instruction that's less likely to trigger safety filters
+            queryToSend = `${userMessage}\n\n(Please provide your response in ${languageName})`;
         }
         
         // Call API

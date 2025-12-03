@@ -97,7 +97,7 @@ class GeminiLLMService:
                 
                 if "finish_reason" in str(ve) or finish_reason == 2:
                     # Response was blocked by safety filters
-                    return "I apologize, but I couldn't generate a response for this query. This might be due to content safety filters. Please try rephrasing your question or asking about a different financial topic."
+                    return "I apologize, but I couldn't generate a response for this query. This might be due to:\n\n• Content safety filters detecting potentially sensitive terms\n• Complex or ambiguous phrasing in the question\n• Language translation request combined with certain topics\n\nPlease try:\n✓ Rephrasing your question more simply\n✓ Removing any special characters or formatting\n✓ Asking in English first, then using the language selector\n✓ Breaking complex questions into smaller parts"
                 else:
                     # Other ValueError - try to extract more info
                     return f"I encountered an issue generating a response. Error: {str(ve)[:100]}. Please try again with a different question."

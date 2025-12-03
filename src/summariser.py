@@ -162,12 +162,25 @@ class DocumentSummariser:
         """
         doc_type_formatted = doc_type.replace('_', ' ').title()
         
-        base_prompt = f"""You are a financial advisor helping users understand their financial documents.
+        # Extract language instruction if present in user_query
+        language_instruction = ""
+        cleaned_query = user_query
+        if user_query:
+            # Check if query starts with language instruction
+            if "[Analyze in " in user_query and " language]" in user_query:
+                import re
+                match = re.search(r'\[Analyze in (.+?) language\]', user_query)
+                if match:
+                    lang_name = match.group(1)
+                    language_instruction = f"IMPORTANT: Provide your ENTIRE response in {lang_name}. All sections (Summary, Important Points, Warnings, Action Points) MUST be in {lang_name}.\n\n"
+                    cleaned_query = re.sub(r'\[Analyze in .+? language\]\s*', '', user_query).strip()
+        
+        base_prompt = f"""{language_instruction}You are a financial advisor helping users understand their financial documents.
 The document type is: {doc_type_formatted}
 
 Your task:
-1. Provide a SIMPLE summary in easy English
-2. {'Answer the user query: "' + user_query + '" in simple terms' if user_query else 'Skip to next step'}
+1. Provide a SIMPLE summary
+2. {'Answer the user query: "' + cleaned_query + '" in simple terms' if cleaned_query else 'Skip to next step'}
 3. Identify and explain IMPORTANT POINTS - especially:
    - Hidden charges or penalties
    - High interest rates
@@ -176,12 +189,12 @@ Your task:
 4. List ACTION POINTS - what the user needs to do
 5. WARNINGS - highlight anything that could cause financial harm
 
-Use clear English. Use short sentences. Avoid jargon.
+Use clear language. Use short sentences. Avoid jargon.
 If technical terms are unavoidable, explain them simply.
 
 Format your response clearly with these sections:
 - **Summary**
-{('- **Answer to Your Question**' if user_query else '')}
+{('- **Answer to Your Question**' if cleaned_query else '')}
 - **Important Points**
 - **Warnings**
 - **Action Points**"""
@@ -439,12 +452,25 @@ def create_document_summariser(
         """
         doc_type_formatted = doc_type.replace('_', ' ').title()
         
-        base_prompt = f"""You are a financial advisor helping users understand their financial documents.
+        # Extract language instruction if present in user_query
+        language_instruction = ""
+        cleaned_query = user_query
+        if user_query:
+            # Check if query starts with language instruction
+            if "[Analyze in " in user_query and " language]" in user_query:
+                import re
+                match = re.search(r'\[Analyze in (.+?) language\]', user_query)
+                if match:
+                    lang_name = match.group(1)
+                    language_instruction = f"IMPORTANT: Provide your ENTIRE response in {lang_name}. All sections (Summary, Important Points, Warnings, Action Points) MUST be in {lang_name}.\n\n"
+                    cleaned_query = re.sub(r'\[Analyze in .+? language\]\s*', '', user_query).strip()
+        
+        base_prompt = f"""{language_instruction}You are a financial advisor helping users understand their financial documents.
 The document type is: {doc_type_formatted}
 
 Your task:
-1. Provide a SIMPLE summary in easy English
-2. {'Answer the user query: "' + user_query + '" in simple terms' if user_query else 'Skip to next step'}
+1. Provide a SIMPLE summary
+2. {'Answer the user query: "' + cleaned_query + '" in simple terms' if cleaned_query else 'Skip to next step'}
 3. Identify and explain IMPORTANT POINTS - especially:
    - Hidden charges or penalties
    - High interest rates
@@ -453,12 +479,12 @@ Your task:
 4. List ACTION POINTS - what the user needs to do
 5. WARNINGS - highlight anything that could cause financial harm
 
-Use clear English. Use short sentences. Avoid jargon.
+Use clear language. Use short sentences. Avoid jargon.
 If technical terms are unavoidable, explain them simply.
 
 Format your response clearly with these sections:
 - **Summary**
-{('- **Answer to Your Question**' if user_query else '')}
+{('- **Answer to Your Question**' if cleaned_query else '')}
 - **Important Points**
 - **Warnings**
 - **Action Points**"""
