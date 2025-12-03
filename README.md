@@ -5,14 +5,14 @@
 
 [![Python](https://img.shields.io/badge/Python-3.12+-blue.svg)](https://python.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.104+-green.svg)](https://fastapi.tiangolo.com)
-[![Streamlit](https://img.shields.io/badge/Streamlit-1.28+-red.svg)](https://streamlit.io)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3.0+-38bdf8.svg)](https://tailwindcss.com)
 [![License](https://img.shields.io/badge/License-Educational-yellow.svg)](LICENSE)
 
 ---
 
 ## 🎯 What is FinBot?
 
-A comprehensive financial education platform with RAG-based chatbot, educational handout generation, and document analysis. Built with Google Gemini, SentenceTransformers, and Qdrant vector database. Features multilingual support (15 Indian languages), GPU-accelerated OCR, and real-time news & YouTube integrations.
+A comprehensive financial education platform with RAG-based chatbot, educational handout generation, and document analysis. Built with Google Gemini, SentenceTransformers, and Qdrant vector database. Features a modern web interface with Tailwind CSS, multilingual support (10 Indian languages), and real-time news & YouTube integrations.
 
 ## ✨ Features
 
@@ -23,7 +23,8 @@ A comprehensive financial education platform with RAG-based chatbot, educational
    - Real-time news articles integration (Google News via SERPAPI)
    - Related YouTube videos sidebar (Educational content recommendations)
    - Semantic search with source attribution
-   - 15 Indian language support with automatic translation
+   - 10 Indian language support with automatic translation
+   - Modern chat interface with typing indicators and message bubbles
 
 2. **Educational Handout Generator**
    - AI-powered 1000-1200 word educational content creation
@@ -41,26 +42,26 @@ A comprehensive financial education platform with RAG-based chatbot, educational
 
 ### 🌐 Multilingual Support
 
-- **15 Indian Languages**: English, Hindi, Bengali, Telugu, Marathi, Tamil, Gujarati, Kannada, Malayalam, Punjabi, Odia, Urdu, Assamese, Konkani, Sanskrit
-- **Auto-detection**: Automatic language detection for user queries
-- **Deep Translator**: Handles 4000+ character translations with chunking
-- **UI Translation**: All interface elements dynamically translated
+- **10 Indian Languages**: English, Hindi, Bengali, Telugu, Marathi, Tamil, Gujarati, Kannada, Malayalam, Punjabi
+- **Seamless Translation**: AI-powered response translation via Gemini's multilingual capabilities
+- **No Backend Changes**: Language support implemented via intelligent prompt engineering
+- **Dropdown Selection**: Easy language switching on all feature pages
 
 ### ⚡ Performance Features
 
-- **GPU Acceleration**: CUDA-enabled OCR processing (5-10x faster)
+- **Modern UI**: Responsive design with Tailwind CSS, glass-morphism effects, and smooth animations
 - **Vector Database**: Qdrant with 1024-dim embeddings (BAAI/bge-large-en-v1.5)
 - **Stateless Chat**: Token-optimized queries without history overhead
 - **Smart Chunking**: 1000 chars with 200 overlap for optimal retrieval
-- **Text Cleaning**: Automatic removal of headers, footers, page numbers
+- **Fast Loading**: CDN-based assets for instant page loads
 
 ### 🎯 Advanced Capabilities
 
 - **Context-Aware**: 10,000 char context window (~2000 words)
 - **Dual Token Configs**: Chat (1024 tokens) vs Handout (3000 tokens)
 - **Safety Settings**: Configurable content filtering with HarmCategory enums
-- **Rich Sources**: Compact display with filename, score percentage, text preview
-- **Colored UI**: Green-bordered answer boxes, emoji avatars, clean formatting
+- **Rich UI**: Purple-blue gradient design, card-based layouts, hover effects
+- **Auto-Detection**: Automatically uses correct backend URL for local or network access
 
 ## 🏗️ Architecture
 
@@ -87,16 +88,31 @@ backend/
 - `GET /api/integrations/youtube` - Fetch YouTube videos
 - `GET /api/status` - System health check
 
-### Frontend (Streamlit)
+### Frontend (HTML/CSS/JavaScript)
 
 ```
 frontend/
-└── streamlit_app.py              # Multi-page web interface
-    ├── Home Page                 # 3 feature cards
-    ├── Chatbot Page              # Chat + News/YouTube sidebar
-    ├── Learning Module Page      # Handout generator
-    └── Document Summariser Page  # File upload & analysis
+├── index.html                    # Modern landing page
+├── images/
+│   └── logo.png                  # Custom branding logo
+├── pages/
+│   ├── chatbot.html              # Chat interface with sidebar
+│   ├── learning.html             # Handout generator page
+│   └── summariser.html           # Document analyzer page
+└── js/
+    ├── chatbot.js                # Chat logic and API calls
+    ├── learning.js               # Handout generation logic
+    └── summariser.js             # Document analysis logic
 ```
+
+**Design Features:**
+- Tailwind CSS 3.0 (CDN) for modern styling
+- Glass-morphism navigation with logo
+- Responsive design (mobile, tablet, desktop)
+- Purple-blue gradient theme (#667eea → #764ba2)
+- Smooth animations and hover effects
+- Font Awesome 6.5.1 icons
+- Google Fonts (Inter family)
 
 ### Core Services
 
@@ -128,8 +144,8 @@ src/
 
 - **Python 3.12+** with virtual environment
 - **Docker** (for Qdrant vector database)
-- **NVIDIA GPU** (optional, for faster OCR - 5-10x speedup)
-- **CUDA** installed (if using GPU)
+- **Modern Web Browser** (Chrome, Firefox, Safari, Edge)
+- **No build tools required** (pure HTML/CSS/JavaScript)
 
 ### 1. Installation
 
@@ -198,21 +214,24 @@ MAX_TEXT_LENGTH=15000
 
 ### 4. Run the Application
 
-**Option 1: Web Interface (Recommended)**
+**Start Backend and Frontend:**
 
 ```bash
-# Terminal 1: Start Backend
+# Terminal 1: Start Backend (FastAPI on port 8000)
 chmod +x backend.sh
 ./backend.sh
 
-# Terminal 2: Start Frontend
+# Terminal 2: Start Frontend (HTTP server on port 5000)
 chmod +x frontend.sh
 ./frontend.sh
 ```
 
-Access at: `http://localhost:8501`
+**Access the Application:**
+- Local: `http://localhost:5000`
+- Network: `http://[your-ip]:5000` (e.g., `http://192.168.1.100:5000`)
+- Frontend auto-detects backend URL (localhost or network)
 
-**Option 2: Terminal Interface**
+**Alternative Terminal Interface:**
 
 ```bash
 python3 main.py
@@ -229,21 +248,24 @@ python3 main.py
 ```
 
 **Via Web Interface:**
-- Open browser at `http://localhost:8501`
-- Currently uses terminal-based ingestion (web ingestion in development)
+- Open browser at `http://localhost:5000`
+- Navigate to home page
+- Use terminal interface for ingestion (web ingestion in development)
+- Or run: `python3 main.py` and choose option 2
 
 ## 📖 Usage Guide
 
 ### Feature 1: Financial Chatbot 💬
 
-1. Navigate to **Chatbot** page
-2. Select language from top-right dropdown (15 languages available)
-3. Ask questions in any supported language
-4. **Right Sidebar** automatically shows:
+1. Navigate to **Chatbot** page from home
+2. Select language from dropdown (10 languages: English, Hindi, Bengali, Telugu, Marathi, Tamil, Gujarati, Kannada, Malayalam, Punjabi)
+3. Type your question in the chat input
+4. Click send or press Enter
+5. **Right Sidebar** automatically shows:
    - 📺 Top 5 related YouTube videos
    - 📰 Top 5 latest news articles
-5. View sources in compact format (filename, score, preview)
-6. Answers are automatically translated to your selected language
+6. AI responds in your selected language (via natural prompt translation)
+7. View responses with proper formatting and markdown support
 
 **Example Questions:**
 - "What is compound interest?"
@@ -252,15 +274,17 @@ python3 main.py
 
 ### Feature 2: Learning Module Generator 📚
 
-1. Navigate to **Learning Module** page
-2. Enter topic (e.g., "Investment Strategies")
-3. Configure options:
+1. Navigate to **Learning Module** page from home
+2. Select output language from dropdown (10 languages)
+3. Enter topic (e.g., "Investment Strategies") or click a suggestion chip
+4. Configure options:
    - Target word count: 1000/1100/1200 words
    - Include latest news: ✓/✗ (uses Google Search)
    - Search depth: basic/standard/comprehensive
-4. Click "Generate Learning Module"
-5. Wait 30-60 seconds for 3-agent pipeline
-6. Download as markdown file
+5. Click "Generate Handout"
+6. Watch animated progress bar (30-60 seconds)
+7. View generated content with markdown formatting
+8. Download as `.md` file
 
 **Generated Structure:**
 - Introduction (200-220 words)
@@ -271,14 +295,21 @@ python3 main.py
 
 ### Feature 3: Document Summariser 📄
 
-1. Navigate to **Document Summariser** page
-2. Upload PDF (loan agreement, insurance, investment doc)
-3. Optional: Add specific question about document
-4. View analysis showing:
+1. Navigate to **Document Summariser** page from home
+2. Select analysis language from dropdown (10 languages)
+3. Drag and drop PDF file or click to browse
+4. View file info (name, size, type)
+5. Optional: Add specific question about the document
+6. Click "Analyze Document"
+7. Wait for processing (10-30 seconds depending on file size)
+8. View comprehensive analysis:
    - Document type identification
-   - Key information extraction
-   - Answer to your specific question
-5. Results available in all 15 languages
+   - Summary in selected language
+   - Answer to your question (if provided)
+   - Important points highlighted
+   - Warnings about potential issues
+   - Action points recommended
+9. Download analysis as `.txt` file
 
 **Supported Document Types:**
 - Personal Loan Agreements
@@ -343,8 +374,18 @@ FinBot/
 │       ├── handout_service.py    # 3-agent handout pipeline
 │       ├── ingestion_service.py  # Document processing
 │       └── summariser_service.py # Document analysis
-├── frontend/                     # Streamlit UI
-│   └── streamlit_app.py          # Multi-page web interface
+├── frontend/                     # Modern web interface
+│   ├── index.html                # Landing page with hero section
+│   ├── images/
+│   │   └── logo.png              # Custom branding (126KB)
+│   ├── pages/
+│   │   ├── chatbot.html          # Chat interface (bubble UI)
+│   │   ├── learning.html         # Handout generator
+│   │   └── summariser.html       # Document analyzer
+│   └── js/
+│       ├── chatbot.js            # Chat logic (304 lines)
+│       ├── learning.js           # Handout logic (137 lines)
+│       └── summariser.js         # Analysis logic (289 lines)
 ├── src/                          # Core libraries
 │   ├── rag_pipeline.py           # RAG orchestration (stateless)
 │   ├── summariser.py             # OpenRouter integration
@@ -354,22 +395,22 @@ FinBot/
 │   │   ├── google_search_agent.py# SERPAPI search
 │   │   └── handout_generator.py  # Content generation
 │   ├── embeddings/
-│   │   └── embeddings.py         # SentenceTransformer (GPU)
+│   │   └── embeddings.py         # SentenceTransformer
 │   ├── llm/
-│   │   └── gemini.py             # Gemini with use-case configs
+│   │   └── gemini.py             # Gemini with safety settings
 │   ├── vectorstore/
 │   │   └── qdrant_client.py      # Vector DB operations
 │   ├── integrations/
 │   │   ├── serp_news.py          # Google News API
 │   │   └── serp_youtube.py       # YouTube API
 │   └── utils/
-│       ├── parsing.py            # Docling OCR (GPU-enabled)
+│       ├── parsing.py            # Docling OCR
 │       └── chunking.py           # Text segmentation
 ├── Data/                         # PDF documents (78 files)
 ├── Handout/                      # Generated learning modules
 ├── main.py                       # Terminal interface
 ├── backend.sh                    # Backend startup script
-├── frontend.sh                   # Frontend startup script
+├── frontend.sh                   # Frontend startup script (Python HTTP server)
 ├── requirements.txt              # Python dependencies
 ├── .env                          # Configuration (not in git)
 └── README.md                     # This file
@@ -398,10 +439,10 @@ Total: 30-60 seconds
 - **Hardware**: NVIDIA RTX 4500 Ada (24GB VRAM)
 
 ### 4. Multilingual Deep Translation
-- **Chunking**: Handles 4000+ char translations
-- **Bidirectional**: Query translation (to EN) + Response translation (to target)
-- **UI Elements**: Pre-translated common phrases
-- **Detection**: Automatic language detection for queries
+- **Prompt Engineering**: Natural language instructions appended to queries
+- **Gemini Multilingual**: Leverages native multilingual capabilities
+- **10 Languages**: English + 9 major Indian languages
+- **No Backend Changes**: Pure frontend implementation
 
 ### 5. Safety & Content Filtering
 ```python
@@ -434,15 +475,21 @@ PyMuPDF>=1.23.0                   # PDF processing for summariser
 ```
 fastapi>=0.104.0                  # REST API
 uvicorn[standard]>=0.24.0         # ASGI server
-streamlit>=1.28.0                 # Web UI
 httpx>=0.25.0                     # Async HTTP client
 python-multipart>=0.0.6           # File uploads
 ```
 
+### Frontend (No Dependencies)
+```
+Pure HTML5, CSS3, JavaScript      # No build tools required
+Tailwind CSS 3.0 (CDN)            # Modern styling framework
+Font Awesome 6.5.1 (CDN)          # Icon library
+Google Fonts - Inter (CDN)        # Typography
+Marked.js (CDN)                   # Markdown rendering
+```
+
 ### Language & Search
 ```
-deep-translator>=1.11.4           # 15 language support
-langdetect>=1.0.9                 # Language detection
 google-search-results>=2.4.2      # SERPAPI (News/YouTube)
 ```
 
@@ -453,16 +500,18 @@ pydantic>=2.5.0                   # Data validation
 requests>=2.31.0                  # HTTP requests
 ```
 
-**Total Size**: ~5-6 GB (includes PyTorch + models)
+**Total Size**: ~4-5 GB (includes PyTorch + models)
 
 ## 🐛 Troubleshooting
 
 ### Common Issues
 
-**1. CUDA Out of Memory**
+**1. Port Already in Use**
 ```bash
-# Reduce batch size or disable GPU
-export CUDA_VISIBLE_DEVICES=""  # Force CPU mode
+# Kill process on port 8000 (backend)
+lsof -ti:8000 | xargs kill -9
+# Kill process on port 5000 (frontend)
+lsof -ti:5000 | xargs kill -9
 ```
 
 **2. Qdrant Connection Failed**
@@ -486,32 +535,36 @@ Error: 429 Resource Exhausted
 Solution: Wait 60 seconds (free tier: 60 req/min)
 ```
 
-**5. Translation Timeout**
+**5. Gemini Safety Filters**
 ```
-Error: Translation failed
-Solution: Text too long (>5000 chars), will be chunked automatically
+Error: "I apologize, but I couldn't generate a response..."
+Solution: 
+- Rephrase question more simply
+- Remove special characters
+- Ask in English first, then switch language
+- Break complex questions into smaller parts
 ```
 
-**6. Port Already in Use**
+**6. Frontend Not Loading**
 ```bash
-# Kill process on port 8000 (backend)
-lsof -ti:8000 | xargs kill -9
-# Kill process on port 8501 (frontend)
-lsof -ti:8501 | xargs kill -9
+# Check if backend is running
+curl http://localhost:8000/api/health
+# Should return: {"status":"healthy"}
+
+# Check frontend server
+ps aux | grep "python3 -m http.server"
+# Restart if needed
+./frontend.sh
 ```
 
 ## 🎯 Performance Benchmarks
-
-### Document Processing (78 PDFs)
-- **GPU (RTX 4500)**: 12-15 minutes (~10-12 sec/doc)
-- **CPU (12-core)**: 40-80 minutes (~30-60 sec/doc)
-- **Speedup**: 5-10x with GPU
 
 ### Query Response Time
 - **Vector Search**: 50-100ms
 - **Gemini API**: 2-4 seconds
 - **Total (Chat)**: 2-5 seconds
 - **Total (Handout)**: 30-60 seconds (3 agents)
+- **Page Load**: <1 second (CDN assets)
 
 ### Token Usage
 - **Chat (stateless)**: ~2500 tokens/query
@@ -523,9 +576,10 @@ lsof -ti:8501 | xargs kill -9
 
 1. **Web-based Ingestion**: Currently uses terminal interface (web UI in development)
 2. **SERPAPI Free Tier**: Limited to 100 searches/month (upgrade for more)
-3. **Translation**: Very long responses (>5000 chars) may take extra time
-4. **GPU Memory**: Large PDFs may require 8GB+ VRAM for OCR
+3. **Language Translation**: Relies on Gemini's multilingual capabilities (quality varies by language)
+4. **Network Access**: Best on local WiFi; internet access via tunneling not implemented
 5. **Gemini Rate Limits**: Free tier limited to 60 requests/minute
+6. **Safety Filters**: Some queries may be blocked by Gemini's content filtering
 
 ## 🔮 Future Enhancements
 
@@ -535,10 +589,12 @@ lsof -ti:8501 | xargs kill -9
 - [ ] Export chat conversations to PDF
 - [ ] Multi-document comparison feature
 - [ ] Voice input/output support
-- [ ] More language support (add regional languages)
+- [ ] More language support (regional languages)
 - [ ] Fine-tuned embedding models for finance domain
-- [ ] Blockchain integration for document verification
-- [ ] Mobile app (React Native)
+- [ ] Progressive Web App (PWA) for offline access
+- [ ] Mobile-optimized responsive design improvements
+- [ ] Dark mode theme support
+- [ ] Cloud deployment guides (AWS, GCP, Azure)
 
 ## 🤝 Contributing
 
