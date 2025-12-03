@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Chatbot - FinBot</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+        }
+        .chat-scroll {
+            scrollbar-width: thin;
+            scrollbar-color: #667eea #f1f5f9;
+        }
+        .chat-scroll::-webkit-scrollbar {
+            width: 6px;
+        }
+        .chat-scroll::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 10px;
+        }
+        .chat-scroll::-webkit-scrollbar-thumb {
+            background: #667eea;
+            border-radius: 10px;
+        }
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .message {
+            animation: fadeInUp 0.3s ease-out;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-purple-50 via-blue-50 to-pink-50 min-h-screen">
+    
+    <!-- Navigation -->
+    <nav class="glass-effect shadow-lg fixed w-full top-0 z-50 border-b border-gray-100">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-20">
+                <a href="../index.html" class="flex items-center space-x-3 group">
+                    <div class="w-12 h-12 rounded-xl flex items-center justify-center transform group-hover:scale-110 transition-transform duration-300">
+                        <img src="../images/logo.png" alt="FinBot Logo" class="w-full h-full object-contain">
+                    </div>
+                    <span class="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+                        FinBot
+                    </span>
+                </a>
+                
+                <div class="hidden md:flex items-center space-x-1">
+                    <a href="../index.html" class="px-4 py-2 rounded-lg font-medium text-gray-700 hover:bg-purple-50 hover:text-purple-600 transition-all duration-200">
+                        Home
+                    </a>
+                    <a href="chatbot.html" class="px-4 py-2 rounded-lg font-medium text-purple-600 bg-purple-50">
+                        Chatbot
+                    </a>
+                    <a href="learning.html" class="px-4 py-2 rounded-lg font-medium text-gray-700 hover:bg-purple-50 hover:text-purple-600 transition-all duration-200">
+                        Learning
+                    </a>
+                    <a href="summariser.html" class="px-4 py-2 rounded-lg font-medium text-gray-700 hover:bg-purple-50 hover:text-purple-600 transition-all duration-200">
+                        Summariser
+                    </a>
+                </div>
+
+                <select id="languageSelect" class="px-4 py-2 rounded-lg border-2 border-gray-200 focus:border-purple-500 focus:outline-none bg-white font-medium text-gray-700" title="Select response language">
+                    <option value="en">🌐 English</option>
+                    <option value="hi">🇮🇳 हिंदी</option>
+                    <option value="bn">🇮🇳 বাংলা</option>
+                    <option value="te">🇮🇳 తెలుగు</option>
+                    <option value="mr">🇮🇳 मराठी</option>
+                    <option value="ta">🇮🇳 தமிழ்</option>
+                    <option value="gu">🇮🇳 ગુજરાતી</option>
+                    <option value="kn">🇮🇳 ಕನ್ನಡ</option>
+                    <option value="ml">🇮🇳 മലയാളം</option>
+                    <option value="pa">🇮🇳 ਪੰਜਾਬੀ</option>
+                </select>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="pt-24 pb-8 px-4">
+        <div class="max-w-7xl mx-auto">
+            <!-- Back Button -->
+            <a href="../index.html" class="inline-flex items-center px-4 py-2 bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-300 mb-6 font-medium text-gray-700 hover:text-purple-600">
+                <i class="fas fa-arrow-left mr-2"></i>
+                Back to Home
+            </a>
+
+            <!-- Chat Layout -->
+            <div class="grid lg:grid-cols-3 gap-6">
+                
+                <!-- Chat Main Section -->
+                <div class="lg:col-span-2">
+                    <div class="bg-white rounded-3xl shadow-2xl overflow-hidden">
+                        <!-- Chat Header -->
+                        <div class="gradient-bg p-6 text-white">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-12 h-12 bg-white bg-opacity-20 rounded-xl flex items-center justify-center">
+                                    <i class="fas fa-robot text-2xl"></i>
+                                </div>
+                                <div>
+                                    <h2 class="text-2xl font-bold">FinBot Assistant</h2>
+                                    <p class="text-purple-100">Ask me anything about finance!</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Chat Messages -->
+                        <div id="chatMessages" class="h-[500px] overflow-y-auto p-6 space-y-4 chat-scroll bg-gray-50">
+                            <!-- Welcome Message -->
+                            <div class="flex justify-center">
+                                <div class="bg-white rounded-2xl shadow-md p-6 max-w-md text-center">
+                                    <div class="text-4xl mb-3">👋</div>
+                                    <h3 class="text-xl font-bold text-gray-800 mb-2">Welcome to FinBot!</h3>
+                                    <p class="text-gray-600 mb-4">I'm here to help with all your financial questions.</p>
+                                    <div class="flex flex-wrap gap-2 justify-center">
+                                        <button onclick="sendMessage('What are mutual funds?')" class="px-4 py-2 bg-purple-100 text-purple-700 rounded-full text-sm font-medium hover:bg-purple-200 transition-colors">
+                                            What are mutual funds?
+                                        </button>
+                                        <button onclick="sendMessage('How to start investing?')" class="px-4 py-2 bg-purple-100 text-purple-700 rounded-full text-sm font-medium hover:bg-purple-200 transition-colors">
+                                            How to start investing?
+                                        </button>
+                                        <button onclick="sendMessage('Tax saving tips')" class="px-4 py-2 bg-purple-100 text-purple-700 rounded-full text-sm font-medium hover:bg-purple-200 transition-colors">
+                                            Tax saving tips
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Chat Input -->
+                        <div class="p-6 bg-white border-t border-gray-200">
+                            <div class="flex items-center space-x-3">
+                                <input 
+                                    type="text" 
+                                    id="chatInput" 
+                                    placeholder="Ask your financial question..."
+                                    class="flex-1 px-6 py-4 rounded-2xl border-2 border-gray-200 focus:border-purple-500 focus:outline-none text-gray-700 font-medium"
+                                    onkeypress="if(event.key === 'Enter') sendMessage()"
+                                />
+                                <button onclick="sendMessage()" class="gradient-bg text-white px-8 py-4 rounded-2xl font-semibold hover:shadow-lg transform hover:scale-105 transition-all duration-300">
+                                    <i class="fas fa-paper-plane"></i>
+                                </button>
+                            </div>
+                            <button onclick="clearChat()" class="mt-3 text-gray-500 hover:text-red-500 text-sm font-medium transition-colors">
+                                <i class="fas fa-trash mr-2"></i>Clear Chat
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sidebar -->
+                <div class="space-y-6">
+                    <!-- Videos Card -->
+                    <div class="bg-white rounded-2xl shadow-xl p-6">
+                        <h3 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
+                            <i class="fas fa-video text-purple-600 mr-3"></i>
+                            Related Videos
+                        </h3>
+                        <div id="videosList" class="space-y-3">
+                            <p class="text-gray-500 text-center py-8">Ask a question to see related videos</p>
+                        </div>
+                    </div>
+
+                    <!-- News Card -->
+                    <div class="bg-white rounded-2xl shadow-xl p-6">
+                        <h3 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
+                            <i class="fas fa-newspaper text-purple-600 mr-3"></i>
+                            Latest News
+                        </h3>
+                        <div id="newsList" class="space-y-3">
+                            <p class="text-gray-500 text-center py-8">Ask a question to see latest news</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="../js/chatbot.js"></script>
+</body>
+</html>

@@ -125,12 +125,14 @@ Context:
 Question: {query}
 
 Instructions:
-- Provide a clear, well-structured answer based on the context above
-- Use bullet points or numbered lists where appropriate
-- Explain concepts in simple language
-- Include relevant examples or details from the context
-- Break down complex topics into easy-to-understand sections
+- Provide a detailed, comprehensive answer (at least 150-200 words) based on the context above
+- Use bullet points or numbered lists where appropriate to organize information
+- Explain concepts in simple, friendly language that anyone can understand
+- Include relevant examples or details from the context to illustrate key points
+- Break down complex topics into easy-to-understand sections with clear explanations
+- Add practical insights or real-world applications where relevant
 - If the context doesn't fully answer the question, mention what information is available
+- Make your response conversational and engaging, not just a dry explanation
 
 Answer:"""
 

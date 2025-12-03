@@ -1,6 +1,6 @@
 #!/bin/bash
-# Start FinBot Frontend (Streamlit)
-# This script runs the Streamlit web interface
+# Start FinBot Frontend (Modern HTML/CSS/JS)
+# This script runs the modern web interface using Python HTTP server
 
 echo "========================================"
 echo "   Starting FinBot Frontend"
@@ -20,25 +20,32 @@ if ! curl -s http://localhost:8000/api/health >/dev/null 2>&1; then
     fi
 fi
 
-# Activate virtual environment
-echo "Activating virtual environment..."
-source /home/rajiv07/Chatbots/myenv/bin/activate
+# Navigate to frontend directory
+cd /home/rajiv07/Chatbots/FinBot/frontend
 
-# Navigate to FinBot directory
-cd /home/rajiv07/Chatbots/FinBot
-
-# Check if streamlit is installed
-if ! command -v streamlit &> /dev/null; then
-    echo "Streamlit not installed. Installing..."
-    pip install streamlit
+# Kill any existing process on port 5000
+if lsof -Pi :5000 -sTCP:LISTEN -t >/dev/null 2>&1; then
+    echo "Stopping existing server on port 5000..."
+    kill -9 $(lsof -Pi :5000 -sTCP:LISTEN -t) 2>/dev/null
+    sleep 1
 fi
 
-# Start Streamlit frontend
+# Start Python HTTP server
 echo ""
 echo "========================================"
-echo "Starting frontend on http://localhost:8501"
+echo "🚀 Frontend starting on:"
+echo ""
+echo "   Local:    http://localhost:5000"
+echo "   Network:  http://$(hostname -I | awk '{print $1}'):5000"
+echo ""
+echo "📱 Pages:"
+echo "   Home:       http://localhost:5000/"
+echo "   Chatbot:    http://localhost:5000/pages/chatbot.html"
+echo "   Learning:   http://localhost:5000/pages/learning.html"
+echo "   Summariser: http://localhost:5000/pages/summariser.html"
+echo ""
 echo "Press CTRL+C to stop"
 echo "========================================"
 echo ""
 
-streamlit run frontend/streamlit_app.py --server.port 8501
+python3 -m http.server 5000
